@@ -266,9 +266,3 @@ def mt3scm_score(X, labels, n_min_subs: int = 3):
     masc = (masc_kt + masc_pos) / 2
     metric = (cc + masc) / 2
     return metric
-
-def main():
-    print("hello")
-
-if __name__ == "__main__":
-    main()
