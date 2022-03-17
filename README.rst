@@ -1,5 +1,7 @@
 Multivariate Time Series Sub-Sequence CLustering Metric
 =======================================================
+.. image:: https://github.com/Jokonu/mt3scm/blob/bb5de3aec44233684e5099ea18fe4cd99b06f98a/coverage.svg
+    :alt: coverage badge
 
 This repository provides a Python package for computing a multivariate time series subsequence clustering metric.
 
