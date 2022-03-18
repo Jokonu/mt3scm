@@ -23,7 +23,7 @@ def divide(*args, **kwargs):
         result = np.divide(*args, **kwargs)
     return np.nan_to_num(result)
 
-def derivative_calculation_per_feature(X: np.array):
+def derivative_calculation_per_feature(X: np.array, eps: float = 1e-5):
     if X.shape[1] > 1:
         dts = []
         for dim in range(X.shape[1]):
@@ -31,7 +31,10 @@ def derivative_calculation_per_feature(X: np.array):
             dts.append(dx_dt)
     else:
         raise TypeError
-    return np.stack(dts, axis=1)
+    deriv = np.stack(dts, axis=1)
+    # Set absolute gradients which are lower than eps value to zero
+    deriv[np.absolute(deriv) < eps] = 0
+    return deriv
 
 def compute_curvature(X:np.array, value_limit: float = 1e6) -> tuple[float, float, float, float]:
     gamma1 = derivative_calculation_per_feature(X)
@@ -112,7 +115,6 @@ def compute_adapted_silhouette(df: pd.DataFrame) -> np.array:
                     # mean_location_A_except_this = location_s
                     # dist_As = np.linalg.norm(location_s - np.absolute(location_s * df.index.get_level_values("std")[0]))
                     dist_As = 0
-                    # import pdb;pdb.set_trace()
                 # Calc distance to all other mean cluster centers
                 # Drop current cluster and substract current subsequence location from all other cluster mean centers
                 a_min_b = df_mean_cluster.drop(name).values - location_s
@@ -127,13 +129,12 @@ def compute_adapted_silhouette(df: pd.DataFrame) -> np.array:
                     asc = 0
                 elif dist_As == 0 and dist_Bs == 0:
                     asc = -1
-                    # import pdb;pdb.set_trace()
                 else:
                     asc = (dist_Bs - dist_As) / np.array([dist_As, dist_Bs]).max()
                 ascs.append([name, name_s, asc])
     return np.stack(ascs)
 
-def mt3scm_score(X, labels, n_min_subs: int = 3):
+def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve:bool = True):
     """Compute the multivariate time series-subsequence clustering metric (mt3scm) score.
     #TODO: Explanation here!
     Procedure for finding nearest cluster:
@@ -187,14 +188,13 @@ def mt3scm_score(X, labels, n_min_subs: int = 3):
     # n_min_subs is the minimal number of points in a subsequence
     # Calculate the curvature and the torsion for all points and find min and max for normalization later
     kappa_X, tau_X, speed_X, acceleration_X = compute_curvature(X)
-    # cts_data = np.array([cts.kappa, cts.tau])
     # Set min max values for curvature and torsion
-    # kappa_max = cts.kappa.max()
-    # kappa_min = cts.kappa.min()
+    kappa_max = kappa_X.max()
+    kappa_min = kappa_X.min()
     kappa_mean = kappa_X.mean()
     kappa_std = np.nanstd(kappa_X)
-    # tau_max = cts.tau.max()
-    # tau_min = cts.tau.min()
+    tau_max = tau_X.max()
+    tau_min = tau_X.min()
     tau_mean = tau_X.mean()
     tau_std = np.nanstd(tau_X)
 
@@ -223,13 +223,14 @@ def mt3scm_score(X, labels, n_min_subs: int = 3):
             if seq_len > n_min_subs:
                 kappa_S, tau_S, speed_S, acceleration_S = compute_curvature(subs_data)
                 # TODO: standardize or normalize??
-                # Normalize curvature and torsion
-                # kappa_norm = (cts.kappa - kappa_min) / (kappa_max - kappa_min)
-                # tau_norm = (cts.tau - tau_min) / (tau_max - tau_min)
-                # Standardize curvature and torsion
-                kappa_norm = (kappa_S - kappa_mean) / (kappa_std)
-                tau_norm = (tau_S - tau_mean) / (tau_std)
-                # import pdb;pdb.set_trace()
+                if standardize_subs_curve is True:
+                    # Standardize curvature and torsion
+                    kappa_norm = divide((kappa_S - kappa_mean), kappa_std)
+                    tau_norm = divide((tau_S - tau_mean), tau_std)
+                else:
+                    # Normalize curvature and torsion
+                    kappa_norm = (kappa_S - kappa_min) / (kappa_max - kappa_min)
+                    tau_norm = (tau_S - tau_min) / (tau_max - tau_min)
                 # Compute the subsequence curvature consistency (scc)
                 scc = 1 - ((np.std(kappa_norm) + np.std(tau_norm)) / 2)
                 # Compute the subsequence mean curvature and torsion
