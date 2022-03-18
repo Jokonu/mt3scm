@@ -19,6 +19,15 @@ Testing the package with pytest and generating code coverage information.
 
     $ pytest
 
+    # Produce .coverage file to use with coverage-badge
+    $ pytest --cov-report= --cov=mt3scm tests/
+
+    # run for generating the badge
+    $ coverage-badge -o coverage.svg
+
+    # For adding verbosity:
+    $ pytest -vvv
+
     # For adding testcoverage:
     $ pytest --cov=mt3scm tests/
 
