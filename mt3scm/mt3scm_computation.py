@@ -24,13 +24,10 @@ def divide(*args, **kwargs):
     return np.nan_to_num(result)
 
 def derivative_calculation_per_feature(X: np.array, eps: float = 1e-5):
-    if X.shape[1] > 1:
-        dts = []
-        for dim in range(X.shape[1]):
-            dx_dt = np.gradient(X[:, dim])
-            dts.append(dx_dt)
-    else:
-        raise TypeError
+    dts = []
+    for dim in range(X.shape[1]):
+        dx_dt = np.gradient(X[:, dim])
+        dts.append(dx_dt)
     deriv = np.stack(dts, axis=1)
     # Set absolute gradients which are lower than eps value to zero
     deriv[np.absolute(deriv) < eps] = 0
@@ -90,8 +87,6 @@ def find_subsequence_groups_per_label(label_array: np.array, label: int):
     df = pd.DataFrame({"times": new_ts.index - 1, "group": (new_ts.diff() == True).cumsum()})
     df = df.drop(0).reset_index(drop=True)
     fin_df = (df.loc[df["group"] % 2 == 1].groupby("group")["times"].agg(["first","last"]).rename(columns={"first": "start", "last": "end"}))
-    if fin_df.empty and ts.all():
-        fin_df = pd.DataFrame([[0, ts.shape[0]]], columns=["start", "end"], index=pd.Index([0], name="group"))
     return fin_df
 
 def compute_adapted_silhouette(df: pd.DataFrame) -> np.array:

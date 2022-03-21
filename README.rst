@@ -54,4 +54,4 @@ Testing the package with pytest and generating code coverage information.
     $ pytest --lf
 
     # Generating html report
-    $ pytest --html=report.html --self-contained-html
+    $ pytest --cov=mt3scm --cov-report=html

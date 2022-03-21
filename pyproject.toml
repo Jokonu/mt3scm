@@ -3,6 +3,10 @@ name = "mt3scm"
 version = "0.1.0"
 description = "Python package for 'Multivariate Time Series Sub-Sequence CLustering Metric'"
 authors = ["Jonas Köhne <jokohonas@gmail.com>"]
+maintainers = ["Jonas Köhne <jokohonas@gmail.com>"]
+license = "BSD-3-Clause"
+readme = "README.rst"
+repository = "https://github.com/Jokonu/mt3scm"
 
 [tool.poetry.dependencies]
 python = "^3.9"
@@ -17,6 +21,7 @@ pytest-cov = "^3.0.0"
 coverage-badge = "^1.1.0"
 seaborn = "^0.11.2"
 black = "^22.1.0"
+toml = "^0.10.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
