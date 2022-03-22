@@ -12,16 +12,28 @@ from sklearn.metrics.cluster._unsupervised import check_number_of_labels
 from sklearn.preprocessing import LabelEncoder
 
 
-def check_X_constant_values(X):
+def check_data_constant_values(X: np.array):
+    """Checking for only constant values in the data and raising ValueError
+
+    Args:
+        X (np.array): multivariate time series data provided
+
+    Raises:
+        ValueError: "Some or all dimensions of X have only constant values over time! No clustering possible! Remove constant columns"
+
+    Returns:
+        _type_: np.array
+    """
     if ((X.min(axis=0) - X.max(axis=0)) == 0).any():
-        raise ValueError(f"Some or all dimensions of X have only constant values over time! No clustering possible! Remove constant columns")
-    else:
-        return X
+        raise ValueError("Some or all dimensions of X have only constant values over time! No clustering possible! Remove constant columns")
+    return X
+
 
 def divide(*args, **kwargs):
-    with np.errstate(divide='ignore', invalid='ignore'):
+    with np.errstate(divide="ignore", invalid="ignore"):
         result = np.divide(*args, **kwargs)
     return np.nan_to_num(result)
+
 
 def derivative_calculation_per_feature(X: np.array, eps: float = 1e-5):
     dts = []
@@ -33,7 +45,8 @@ def derivative_calculation_per_feature(X: np.array, eps: float = 1e-5):
     deriv[np.absolute(deriv) < eps] = 0
     return deriv
 
-def compute_curvature(X:np.array, value_limit: float = 1e6) -> tuple[float, float, float, float]:
+
+def compute_curvature(X: np.array, value_limit: float = 1e6) -> tuple[float, float, float, float]:
     gamma1 = derivative_calculation_per_feature(X)
     gamma2 = derivative_calculation_per_feature(gamma1)
     gamma3 = derivative_calculation_per_feature(gamma2)
@@ -61,14 +74,12 @@ def compute_curvature(X:np.array, value_limit: float = 1e6) -> tuple[float, floa
     e2_d = derivative_calculation_per_feature(e2)
     tau = divide(np.einsum("ij,ij->i", e2_d, E3), np.linalg.norm(gamma1, axis=1))
     # Replace all -inf and inf values with the finite min and max
-    tau_old = np.where((tau == np.inf), tau[np.isfinite(tau)].max(), np.where((tau == -np.inf), tau[np.isfinite(tau)].min(), tau))
-    kappa_old = np.where((kappa == np.inf), kappa[np.isfinite(kappa)].max(), np.where((kappa == -np.inf), kappa[np.isfinite(kappa)].min(), kappa))
-
     tau = np.clip(tau, a_max=value_limit, a_min=-value_limit)
     kappa = np.clip(kappa, a_max=value_limit, a_min=-value_limit)
     tau = np.nan_to_num(tau, posinf=value_limit, neginf=-value_limit)
     kappa = np.nan_to_num(kappa, posinf=value_limit, neginf=-value_limit)
     return kappa, tau, speed, acceleration
+
 
 def find_subsequence_groups_per_label(label_array: np.array, label: int):
     """This function creates a DataFrame with 'start' and 'end' index values for each occurrence of consecutive 'True' values provided by the Series created from the mask_labels. mask_labels is a True False Array which is True where the 'label' parameter is found in the 'label_array' parameter
@@ -86,8 +97,9 @@ def find_subsequence_groups_per_label(label_array: np.array, label: int):
     new_ts = pd.concat([pd.Series(np.array([False])), ts], ignore_index=True)
     df = pd.DataFrame({"times": new_ts.index - 1, "group": (new_ts.diff() == True).cumsum()})
     df = df.drop(0).reset_index(drop=True)
-    fin_df = (df.loc[df["group"] % 2 == 1].groupby("group")["times"].agg(["first","last"]).rename(columns={"first": "start", "last": "end"}))
+    fin_df = df.loc[df["group"] % 2 == 1].groupby("group")["times"].agg(["first", "last"]).rename(columns={"first": "start", "last": "end"})
     return fin_df
+
 
 def compute_adapted_silhouette(df: pd.DataFrame) -> np.array:
     df_mean_cluster = df.groupby(["c_id"]).mean()
@@ -98,7 +110,6 @@ def compute_adapted_silhouette(df: pd.DataFrame) -> np.array:
     else:
         grouped = df.groupby(["c_id"])
         for name, group in grouped:
-            mean_location_A = df_mean_cluster.loc[name].values
             group_A = group.groupby(["s_id"])
             for name_s, subsequence in group_A:
                 # Find closest mean cluster center
@@ -129,7 +140,8 @@ def compute_adapted_silhouette(df: pd.DataFrame) -> np.array:
                 ascs.append([name, name_s, asc])
     return np.stack(ascs)
 
-def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve:bool = True):
+
+def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True):
     """Compute the multivariate time series-subsequence clustering metric (mt3scm) score.
     #TODO: Explanation here!
     Procedure for finding nearest cluster:
@@ -167,7 +179,7 @@ def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve:bool = T
     #TODO: Insert publication
     """
     X, labels = check_X_y(X, labels, ensure_min_features=2)
-    X = check_X_constant_values(X)
+    X = check_data_constant_values(X)
 
     le = LabelEncoder()
     labels = le.fit_transform(labels)
@@ -182,7 +194,7 @@ def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve:bool = T
     data_max = X.max(axis=0)
     # n_min_subs is the minimal number of points in a subsequence
     # Calculate the curvature and the torsion for all points and find min and max for normalization later
-    kappa_X, tau_X, speed_X, acceleration_X = compute_curvature(X)
+    kappa_X, tau_X, _, _ = compute_curvature(X)
     # Set min max values for curvature and torsion
     kappa_max = kappa_X.max()
     kappa_min = kappa_X.min()
@@ -214,10 +226,9 @@ def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve:bool = T
             std_pos = norm_subs_data.std(axis=0).mean()
             # Get the center position as the middle of the subsequence
             center_pos = np.take(subs_data, subs_data.shape[0] // 2, axis=0)
-            subs_center_data.append([int(cluster_id), int(subsequence_id), std_pos]  + center_pos.tolist())
+            subs_center_data.append([int(cluster_id), int(subsequence_id), std_pos] + center_pos.tolist())
             if seq_len > n_min_subs:
-                kappa_S, tau_S, speed_S, acceleration_S = compute_curvature(subs_data)
-                # TODO: standardize or normalize??
+                kappa_S, tau_S, _, _ = compute_curvature(subs_data)
                 if standardize_subs_curve is True:
                     # Standardize curvature and torsion
                     kappa_norm = divide((kappa_S - kappa_mean), kappa_std)
@@ -244,12 +255,18 @@ def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve:bool = T
         cccs.append(np.mean(sccs))
     # Mean normalized kappa and tau for each subsequence. Stack and create DataFrame
     cluster_curve_data = np.stack(subs_curve_data)
-    df_curve = pd.DataFrame(cluster_curve_data[:, 3:], index=pd.MultiIndex.from_arrays(cluster_curve_data[:, 0:3].T.astype("int"), names=["c_id", "s_id", "std"]), columns=["mean_kappa_norm", "mean_tau_norm"])
-    df_mean_cluster_curves = df_curve.groupby(["c_id"]).mean()
-
+    df_curve = pd.DataFrame(
+        cluster_curve_data[:, 3:],
+        index=pd.MultiIndex.from_arrays(cluster_curve_data[:, 0:3].T.astype("int"), names=["c_id", "s_id", "std"]),
+        columns=["mean_kappa_norm", "mean_tau_norm"],
+    )
     # Mean center position for each subsequence. Stack and create DataFrame
     cluster_center_data = np.stack(subs_center_data)
-    df_centers = pd.DataFrame(cluster_center_data[:, 3:], index=pd.MultiIndex.from_arrays(cluster_center_data[:, 0:3].T, names=["c_id", "s_id", "std"]), columns=[f"x{i}" for i in range(cluster_center_data[:, 3:].shape[1])])
+    df_centers = pd.DataFrame(
+        cluster_center_data[:, 3:],
+        index=pd.MultiIndex.from_arrays(cluster_center_data[:, 0:3].T, names=["c_id", "s_id", "std"]),
+        columns=[f"x{i}" for i in range(cluster_center_data[:, 3:].shape[1])],
+    )
     # Compute adapted silhouette coefficient using cluster centers
     ascs_pos = compute_adapted_silhouette(df_centers)
     # Compute adapted silhouette coefficient using kappa and tau
