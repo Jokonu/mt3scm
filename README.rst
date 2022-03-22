@@ -1,6 +1,6 @@
 Multivariate Time Series Sub-Sequence Clustering Metric
 =======================================================
-.. image:: https://github.com/Jokonu/mt3scm/blob/bb5de3aec44233684e5099ea18fe4cd99b06f98a/coverage.svg
+.. image:: coverage.svg
     :alt: coverage badge
 
 This repository provides a Python package for computing a multivariate time series subsequence clustering metric.
@@ -10,7 +10,7 @@ Status::
     Work in progress 🚧
 
 
-    
+
 Comparison of unsupervised clustering metrics with lorenz attractor data
 ------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ This example shows the effect of different metrics on the lorenz attractor datas
 
 
 .. image:: ClusterMetricComparison-Lorenz.png
-    
+
 
 Testing
 -------
