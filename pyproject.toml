@@ -22,6 +22,7 @@ coverage-badge = "^1.1.0"
 seaborn = "^0.11.2"
 black = "^22.1.0"
 toml = "^0.10.2"
+pylint = "^2.12.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
