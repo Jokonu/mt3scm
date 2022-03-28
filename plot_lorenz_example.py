@@ -9,18 +9,22 @@ This example shows the effect of different metrics on the lorenz attractor datas
 # Authors: Jonas Köhne
 # License: BSD 3 clause
 
+from cProfile import label
 import time
 import string
 import itertools
 import seaborn as sns
 import matplotlib.pyplot as plt
+from matplotlib import cm
+from matplotlib.colors import Normalize
 import numpy as np
 import pandas as pd
 
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.neighbors import kneighbors_graph
 from sklearn.metrics import silhouette_score, calinski_harabasz_score, davies_bouldin_score
-from mt3scm import mt3scm_score
+from mt3scm import mt3scm_score, MT3SCM
+
 
 
 def generate_lorenz_attractor_data(dt: float = 0.005, num_steps: int = 3000):
@@ -78,14 +82,17 @@ def plot_lorenz_example(marker_size: float = 0.8) -> None:
     knn_graph = kneighbors_graph(X, 30, include_self=False)
     # Set linkage list
     linkage_list = ["average", "complete", "ward", "single"]
+    # linkage_list = ["complete", "single"]
     # Set number of clusters list and connectivity
     n_clusters = [2, 3, 5, 10, 100, 1000]
+    # n_clusters = [5, 10]
     connect = [None, knn_graph]
+    connect = [knn_graph]
     n_subfigs = len(n_clusters) * len(connect)
 
     fig = plt.figure(constrained_layout=True, figsize=(4 * len(linkage_list), 4 * n_subfigs))
     # Setting global title
-    fig.suptitle(r"\textbf{'Multivariate Time Series Sub-Sequence CLustering Metric' (MT3SCM) Evaluation}")
+    fig.suptitle(r"\textbf{'Multivariate Time Series Sub-Sequence Clustering Metric' (MT3SCM) Evaluation}")
 
     # Create subfigures for connectivity and number of clusters
     subfigs = fig.subfigures(n_subfigs, 1)
@@ -93,47 +100,125 @@ def plot_lorenz_example(marker_size: float = 0.8) -> None:
     # Subplots caption alphabet list
     alphabet_list = list(string.ascii_lowercase)
     subplot_labels = ["".join(x) for x in itertools.product(alphabet_list, repeat=2)]
-    scores = {
-        "mt3scm_score": mt3scm_score,
-        "silhouette_score": silhouette_score,
-        "calinski_harabasz_score": calinski_harabasz_score,
-        "davies_bouldin_score": davies_bouldin_score
-    }
     result_index_names = ["connectivity", "n_clusters", "linkage"]
-    df_results = pd.DataFrame()
+    df_metrics = pd.DataFrame()
     # Counter
     idx = 0
     # Iterate over connectivity and number of clusters
     for connectivity in connect:
         for n_c in n_clusters:
             # Create subplots for all linkage variations
-            axs = subfigs[subfig_index].subplots(1, 4, subplot_kw=dict(projection="3d"))
+            axs = subfigs[subfig_index].subplots(1, len(connect)*len(n_clusters), subplot_kw=dict(projection="3d"))
             subfigs[subfig_index].suptitle(f"connectivity = {connectivity is not None}, n_clusters = {n_c}")
             for subplots_index, linkage in enumerate(linkage_list):
+                print(f"Metrics for connectivity={connectivity is not None}, {linkage=}, {n_c=}")
                 model = AgglomerativeClustering(linkage=linkage, connectivity=connectivity, n_clusters=n_c)
-                t0 = time.time()
                 model.fit(X)
-                elapsed_time = time.time() - t0
-                axs[subplots_index].scatter(X[:, 0], X[:, 1], X[:, 2], c=model.labels_, cmap=plt.cm.nipy_spectral, s=marker_size)
-                results = {}
-                for name, score_fn in scores.items():
-                    results[name] = [score_fn(X, model.labels_)]
+                metrics, kappa_X, tau_X = calc_unsupervised_metrics(X, model.labels_)
                 res_idx = [[connectivity is not None], [n_c], [linkage]]
                 index = pd.MultiIndex.from_arrays(res_idx, names=result_index_names)
-                res_df = pd.DataFrame(np.array(list(results.values())).T, index=index, columns=results.keys())
-                df_results = pd.concat([res_df, df_results], axis=0, verify_integrity=True, names=result_index_names)
-                score = mt3scm_score(X, model.labels_)
-                sil_score = silhouette_score(X, model.labels_)
-                ch_score = calinski_harabasz_score(X, model.labels_)
-                db_score = davies_bouldin_score(X, model.labels_)
-                axs[subplots_index].set_title(
-                    f"\\textbf{{Subfig. {subplot_labels[idx]}:}} {linkage=}\nmt3scm={score:.3f}, silhouette={sil_score:.3f},\ncalinski_harabasz={ch_score:.1f}, davies_bouldin={db_score:.3f}"
-                )
+                data = np.fromiter(metrics.values(), dtype=float)
+                data = np.expand_dims(data, 0)
+                cols = list(metrics.keys())
+                res_df = pd.DataFrame(data, index=index, columns=cols)
+                df_metrics = pd.concat([res_df, df_metrics], axis=0, verify_integrity=True, names=result_index_names)
+
+                subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}} {linkage=},\n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, masc-pos={metrics['masc-pos']:.3f}, masc-kt={metrics['masc-kt']:.3f},\nsil={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
+                # Scatter plot
+                marker_sizes = np.log(kappa_X*tau_X*100 + 1) * 5
+                ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], axs[subplots_index], labels=model.labels_, subplot_title=subtitle, marker_size_array=marker_sizes)
                 idx += 1
             subfig_index += 1
-            plt.savefig(f"ClusterComparison.png", dpi=300)
+    plt.savefig(f"ClusterComparison.png", dpi=300)
     plt.close()
-    df_results.to_csv("ClusterMetricComparisonResults.csv")
+    df_metrics.to_csv("ClusterMetricComparisonResults.csv")
+
+def ax_scatter_3d(X, Y, Z, ax, labels, subplot_title: str = "Subplot Title", marker_size: float = 0.8, marker_size_array = None, marker="o", remove_ticks: bool = True):
+    if marker_size_array is not None:
+        marker_size = marker_size_array
+    n_unique_labels = len(np.unique(labels))
+    cmap = cm.get_cmap('viridis', len(np.unique(labels)))
+    norm = Normalize(vmin=0, vmax=n_unique_labels, clip=False)
+    scat = ax.scatter(X, Y, Z, c=labels, cmap=cmap, s=marker_size, marker=marker, norm=norm)
+    # if remove_ticks is True:
+        # ax.xaxis.set_ticklabels([])
+        # ax.yaxis.set_ticklabels([])
+        # ax.zaxis.set_ticklabels([])
+
+        # for line in ax.xaxis.get_ticklines():
+        #     line.set_visible(False)
+        # for line in ax.yaxis.get_ticklines():
+        #     line.set_visible(False)
+        # for line in ax.zaxis.get_ticklines():
+        #     line.set_visible(False)
+    ax.set_title(subplot_title)
+    fig = plt.gcf()
+    fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.1)
+
+def calc_unsupervised_metrics(X, label_array):
+    # Metric comutations
+    mt3 = MT3SCM(eps=5e-9)
+    mt3scm_metric = mt3.mt3scm_score(X, label_array, standardize_subs_curve=True)
+    metrics_dict = {}
+    metrics_dict["mt3scm"] = mt3scm_metric
+    metrics_dict["cc"] = mt3.wcc
+    metrics_dict["masc-pos"] = mt3.masc_pos
+    metrics_dict["masc-kt"] = mt3.masc_kt
+    metrics_dict["silhouette"] = silhouette_score(X, label_array)
+    metrics_dict["calinski"] = calinski_harabasz_score(X, label_array)
+    metrics_dict["davies"] = davies_bouldin_score(X, label_array)
+    return metrics_dict, mt3.kappa_X, mt3.tau_X
+
+def generate_random_sequences(length: int = 1000, min_seq_length: int = 10, max_seq_length: int = 200, number_of_sequences: int = 10):
+    x = np.zeros(length)
+    X = np.array([])
+    while X.size < length:
+        seq_len = np.random.randint(min_seq_length, max_seq_length)
+        seq_id = np.random.choice(np.arange(number_of_sequences))
+        seq_data = np.full(shape=(seq_len), fill_value=seq_id)
+        X = np.append(X, seq_data) if X.size else seq_data
+    return X[:length]
+
+def plot_other_examples(marker_size: float = 0.8):
+    # Set style with seaborn
+    sns.set_style("whitegrid")
+    plt.rcParams.update({"text.usetex": True, "font.family": "sans-serif", "font.sans-serif": ["Computer Modern Serif"]})
+    # Get lorenz attractor data as dataframe
+    df = generate_lorenz_attractor_data(dt=0.005, num_steps=3001)
+    X = df.values
+
+    n_sequences = [2, 3, 5, 10, 50, 200, 5000]
+    # n_sequences = [2, 3]
+    min_max_seq_len = [(1, 2), (1, 100), (10, 20), (100, 500)]
+    # min_max_seq_len = [(10, 20), (100, 500)]
+    n_x_subfigs = 1
+    n_x_subplots = len(min_max_seq_len)
+    n_y_subfigs = len(n_sequences)
+    n_y_subplots = 1
+    alphabet_list = list(string.ascii_lowercase)
+    subplot_labels = ["".join(x) for x in itertools.product(alphabet_list, repeat=2)]
+    fig = plt.figure(constrained_layout=True, figsize=(4 * n_x_subplots, 4 * n_y_subfigs))
+    # Setting global title
+    fig.suptitle(r"\textbf{'Multivariate Time Series Sub-Sequence Clustering Metric' (MT3SCM) Evaluation}")
+    # Create subfigures for connectivity and number of clusters
+    subfigs = fig.subfigures(n_y_subfigs, n_x_subfigs)
+    idx = 0
+    for subfig_index, number_of_sequences in enumerate(n_sequences):
+        # Create subplots for all linkage variations
+        axs = subfigs[subfig_index].subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"))
+        subfigs[subfig_index].suptitle(f"Number of clusters: {number_of_sequences}")
+        for subplots_index, (min_seq_len, max_seq_len) in enumerate(min_max_seq_len):
+            # Generate random label sequences
+            label_array = generate_random_sequences(length=X.shape[0], min_seq_length = min_seq_len, max_seq_length=max_seq_len, number_of_sequences = number_of_sequences)
+            metrics, _, _ = calc_unsupervised_metrics(X, label_array)
+            n_clusters = len(np.unique(label_array))
+            subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}}, n_clusters={n_clusters}, min={min_seq_len}, max={max_seq_len}, \n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, masc-pos={metrics['masc-pos']:.3f}, masc-kt={metrics['masc-kt']:.3f},\nsil={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
+                # Scatter plot
+            ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], axs[subplots_index], labels=label_array, subplot_title=subtitle)
+            idx += 1
+    plt.savefig(f"Random_example.png", dpi=300)
+    plt.close()
 
 if __name__ == "__main__":
     plot_lorenz_example()
+    plot_other_examples()
