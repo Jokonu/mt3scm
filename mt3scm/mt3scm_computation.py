@@ -108,7 +108,9 @@ def find_subsequence_groups_per_label(label_array: np.ndarray, label: int):
     mask_labels = np.array([True if (val == label) else False for val in label_array])
     ts = pd.Series(mask_labels)
     new_ts = pd.concat([pd.Series(np.array([False])), ts], ignore_index=True)
-    df = pd.DataFrame({"times": new_ts.index - 1, "group": (new_ts.diff() == 1).cumsum()})
+    df = pd.DataFrame(
+        {"times": new_ts.index - 1, "group": (new_ts.diff() == 1).cumsum()}
+    )
     df = df.drop(0).reset_index(drop=True)
     fin_df = (
         df.loc[df["group"] % 2 == 1]

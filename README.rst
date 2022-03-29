@@ -31,7 +31,7 @@ Linting
 ~~~~~~~
 .. code:: bash
 
-    $ pylint mt3scm
+    $ pylint mt3scm -d "C0301,C0103,E0401" --fail-under=8
     $ flake8 mt3scm --max-line-length=120 --ignore=E501,W503
 
 Type checking
@@ -54,7 +54,7 @@ Testing the package with pytest and generating code coverage information.
     $ pytest --cov-report= --cov=mt3scm tests/
 
     # run for generating the badge
-    $ coverage-badge -o coverage.svg
+    $ coverage-badge -o coverage.svg -f
 
     # For adding verbosity:
     $ pytest -vvv
