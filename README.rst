@@ -32,6 +32,7 @@ Linting
 .. code:: bash
 
     $ pylint mt3scm
+    $ flake8 mt3scm --max-line-length=120 --ignore=E501,W503
 
 Type checking
 ~~~~~~~~~~~~~

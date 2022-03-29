@@ -108,9 +108,7 @@ def find_subsequence_groups_per_label(label_array: np.ndarray, label: int):
     mask_labels = np.array([True if (val == label) else False for val in label_array])
     ts = pd.Series(mask_labels)
     new_ts = pd.concat([pd.Series(np.array([False])), ts], ignore_index=True)
-    df = pd.DataFrame(
-        {"times": new_ts.index - 1, "group": (new_ts.diff() == True).cumsum()}
-    )
+    df = pd.DataFrame({"times": new_ts.index - 1, "group": (new_ts.diff() == 1).cumsum()})
     df = df.drop(0).reset_index(drop=True)
     fin_df = (
         df.loc[df["group"] % 2 == 1]
@@ -127,8 +125,8 @@ def compute_adapted_silhouette(
     df_mean_cluster = df.groupby(["c_id"]).mean()
     # If only one cluster found, then set asc to 0:
     ascs = []
-    dist_As:float = 0.0
-    dist_Bs:float = 0.0
+    dist_As: float = 0.0
+    dist_Bs: float = 0.0
     if df.shape[0] == 1:
         ascs.append([df.index.get_level_values("c_id")[0], 0, 0])
     else:
@@ -142,7 +140,9 @@ def compute_adapted_silhouette(
                     mean_location_A_except_this = (
                         group.drop((name, name_s)).mean(axis=0).values
                     )
-                    dist_As = float(np.linalg.norm(mean_location_A_except_this - location_s))
+                    dist_As = float(
+                        np.linalg.norm(mean_location_A_except_this - location_s)
+                    )
                     dist_As = 0 if (np.absolute(dist_As) < min_distance) else dist_As
                 else:
                     # mean_location_A_except_this = location_s
