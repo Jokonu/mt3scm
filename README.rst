@@ -19,9 +19,29 @@ This example shows the effect of different metrics on the lorenz attractor datas
 
 .. image:: ClusterMetricComparison-Lorenz.png
 
+Development steps
+-----------------
+Fromatting
+~~~~~~~~~~
+.. code:: bash
+
+    $ black mt3scm
+
+Linting
+~~~~~~~
+.. code:: bash
+
+    $ pylint mt3scm
+
+Type checking
+~~~~~~~~~~~~~
+.. code:: bash
+
+    $ mypy mt3scm
+
 
 Testing
--------
+~~~~~~~
 
 Testing the package with pytest and generating code coverage information.
 

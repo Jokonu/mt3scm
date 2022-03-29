@@ -23,7 +23,15 @@ seaborn = "^0.11.2"
 black = "^22.1.0"
 toml = "^0.10.2"
 pylint = "^2.12.2"
+mypy = "^0.942"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.mypy]
+plugins = "numpy.typing.mypy_plugin"
+python_version = "3.9"
+warn_return_any = true
+warn_unused_configs = true
+ignore_missing_imports = true
