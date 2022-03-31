@@ -7,7 +7,7 @@ from mt3scm import __version__
 from mt3scm import mt3scm_score
 
 def test_version():
-    assert __version__ == '0.1.0'
+    assert __version__ == '0.2.0'
 
 
 def test_versions_are_in_sync():
@@ -46,7 +46,7 @@ def test_helix():
     labels = np.concatenate([label, label2])
     X = np.stack((xs, ys, zs)).T
     score = mt3scm_score(X, labels)
-    assert score == pytest.approx(0.5, 0.05)
+    assert score == pytest.approx(0.25, 0.05)
 
 # def test_helix2():
 #     n = 1000
@@ -112,7 +112,6 @@ def test_standardize():
     # score = mt3scm_score(X, labels, standardize_subs_curve=False)
     score = mt3scm_score(X, labels, standardize_subs_curve=True)
     assert 1 + score == pytest.approx(1,  rel=1e-2)
-
 
 def test_constant_values():
     X = np.ones((1000, 3))
