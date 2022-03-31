@@ -80,7 +80,7 @@ def ax_scatter_3d(X, Y, Z, ax, labels, subplot_title: str = "Subplot Title", mar
 
 def calc_unsupervised_metrics(X, label_array):
     # Metric comutations
-    mt3 = MT3SCM(eps=5e-9)
+    mt3 = MT3SCM(eps=5e-9, include_speed_acceleration=False)
     mt3scm_metric = mt3.mt3scm_score(X, label_array, standardize_subs_curve=True)
     metrics_dict = {}
     metrics_dict["mt3scm"] = mt3scm_metric

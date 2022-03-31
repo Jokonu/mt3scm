@@ -174,8 +174,22 @@ def compute_adapted_silhouette(
 
 
 class MT3SCM:
-    def __init__(self, eps: float = 1e-8) -> None:
+    def __init__(self, eps: float = 1e-8, include_speed_acceleration: bool = False) -> None:
         self.eps = eps
+        self.cc:float = 0.0
+        self.wcc:float = 0.0
+        self.masc_pos:float = 0.0
+        self.masc_kt:float = 0.0
+        self.masc:float = 0.0
+        self.metric:float = 0.0
+        self.cc:float = 0.0
+        self.cccs:list = []
+        self.np_cs:list = []
+        self.kappa_X: np.ndarray = np.array([])
+        self.tau_X: np.ndarray = np.array([])
+        self.speed_X: np.ndarray = np.array([])
+        self.acceleration_X: np.ndarray = np.array([])
+        self.include_speed_acceleration: bool = include_speed_acceleration
 
     def mt3scm_score(
         self, X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True
@@ -218,37 +232,34 @@ class MT3SCM:
         """
         X, labels = check_X_y(X, labels, ensure_min_features=2)
         X = check_data_constant_values(X)
-
         le = LabelEncoder()
         labels = le.fit_transform(labels)
-        # label_freqs = np.bincount(labels)
         uniq_labels = np.unique(labels)
-        # uniq_labels = np.delete(uniq_labels, 0)
-        # import pdb;pdb.set_trace()
-
         n_samples, _ = X.shape
         n_labels = len(le.classes_)
-
         check_number_of_labels(n_labels, n_samples)
         data_min = X.min(axis=0)
         data_max = X.max(axis=0)
         # n_min_subs is the minimal number of points in a subsequence
         # Calculate the curvature and the torsion for all points and find min and max for normalization later
-        self.kappa_X, self.tau_X, _, _ = compute_curvature(X, eps=self.eps)
-        # Set min max values for curvature and torsion
-        kappa_max = self.kappa_X.max()
-        kappa_min = self.kappa_X.min()
-        kappa_mean = self.kappa_X.mean()
-        kappa_std = np.nanstd(self.kappa_X)
-        tau_max = self.tau_X.max()
-        tau_min = self.tau_X.min()
-        tau_mean = self.tau_X.mean()
-        tau_std = np.nanstd(self.tau_X)
+        self.kappa_X, self.tau_X, self.speed_X, self.acceleration_X = compute_curvature(X, eps=self.eps)
 
-        self.cccs = []
+        if self.include_speed_acceleration is True:
+            features = {"kappa": self.kappa_X, "tau": self.tau_X, "speed": self.speed_X, "acceleration":self.acceleration_X}
+        else:
+            features = {"kappa": self.kappa_X, "tau": self.tau_X}
+        mins = {}
+        maxs = {}
+        means = {}
+        stds = {}
+        # Do calculations for all features based on all data:
+        for name, feature in features.items():
+            mins[name] = feature.min()
+            maxs[name] = feature.max()
+            means[name] = feature.mean()
+            stds[name] = np.nanstd(feature)
         subs_curve_data = []
         subs_center_data = []
-        self.np_cs = []
         # Iterate over unique labels or cluster ids
         for cluster_id in uniq_labels:
             # Find consecutive subsequences per cluster
@@ -273,30 +284,28 @@ class MT3SCM:
                     + center_pos.tolist()
                 )
                 if seq_len > n_min_subs:
-                    kappa_S, tau_S, _, _ = compute_curvature(subs_data, eps=self.eps)
-                    if standardize_subs_curve is True:
-                        # Standardize curvature and torsion
-                        kappa_norm = divide((kappa_S - kappa_mean), kappa_std)
-                        tau_norm = divide((tau_S - tau_mean), tau_std)
+                    kappa_S, tau_S, speed_S, acceleration_S = compute_curvature(subs_data, eps=self.eps)
+                    if self.include_speed_acceleration is True:
+                        features_S = {"kappa": kappa_S, "tau": tau_S, "speed": speed_S, "acceleration":acceleration_S}
                     else:
-                        # Normalize curvature and torsion
-                        kappa_norm = (kappa_S - kappa_min) / (kappa_max - kappa_min)
-                        tau_norm = (tau_S - tau_min) / (tau_max - tau_min)
+                        features_S = {"kappa": kappa_S, "tau": tau_S}
+                    normeds = {}
+                    for name, feature in features_S.items():
+                        if standardize_subs_curve is True:
+                            # Standardize
+                            normeds[name] = divide((feature - means[name]), stds[name])
+                        else:
+                            # Normalize
+                            normeds[name] = (feature - mins[name]) / (maxs[name] - mins[name])
+                    # concat the feature value arrays
+                    features_data = np.concatenate([np.expand_dims(normeds[key], axis=1) for key in sorted(normeds)], 1)
                     # Compute the subsequence curvature consistency (scc)
-                    scc = 1 - ((np.std(kappa_norm) + np.std(tau_norm)) / 2)
+                    scc = 1 - (np.sum(np.std(features_data, axis=0)) / features_data.shape[1])
                     # Compute the subsequence mean curvature and torsion
-                    mean_kappa_norm = np.mean(kappa_norm)
-                    mean_tau_norm = np.mean(tau_norm)
+                    mean_normeds = features_data.mean(axis=0)
                     # Create array of this subsequence id and mean kappa and tau
-                    subs_curve = np.array(
-                        [
-                            int(cluster_id),
-                            int(subsequence_id),
-                            std_pos,
-                            mean_kappa_norm,
-                            mean_tau_norm,
-                        ]
-                    )
+                    subs_curve = np.array([int(cluster_id),int(subsequence_id),std_pos])
+                    subs_curve = np.concatenate([subs_curve, mean_normeds], axis=0)
                     subs_curve_data.append(subs_curve)
                     sccs.append(scc)
                 else:
@@ -313,13 +322,14 @@ class MT3SCM:
             self.np_cs.append(np_c)  # collect the number of points per cluster
         # Mean normalized kappa and tau for each subsequence. Stack and create DataFrame
         cluster_curve_data = np.stack(subs_curve_data)
+        column_names = [f"mean_{name}_norm" for name in features.keys()]
         self.df_curve = pd.DataFrame(
             cluster_curve_data[:, 3:],
             index=pd.MultiIndex.from_arrays(
                 cluster_curve_data[:, 0:3].T.astype("int"),
                 names=["c_id", "s_id", "std"],
             ),
-            columns=["mean_kappa_norm", "mean_tau_norm"],
+            columns=column_names,
         )
         # Mean center position for each subsequence. Stack and create DataFrame
         cluster_center_data = np.stack(subs_center_data)
