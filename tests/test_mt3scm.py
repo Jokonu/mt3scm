@@ -1,10 +1,19 @@
-from pathlib import Path
-import toml
-import pytest
-import numpy as np
+"""Tests for 'Multivariate Time Series Sub-Sequence Clustering Metric'"""
 
-from mt3scm import __version__
-from mt3scm import mt3scm_score
+# Author: Jonas Köhne <jokohonas@gmail.com>
+# License: BSD 3 clause
+
+# Standard Libraries Import
+from pathlib import Path
+
+# Third Party Libraries Import
+import numpy as np
+import pytest
+import toml
+
+# Own Libraries Import
+from mt3scm import __version__, mt3scm_score
+
 
 def test_version():
     assert __version__ == '0.2.0'

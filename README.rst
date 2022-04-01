@@ -23,12 +23,15 @@ Development steps
 -----------------
 Fromatting
 ~~~~~~~~~~
+Formatting is done with black and isort
 .. code:: bash
 
     $ black mt3scm
+    $ isort . --profile black
 
 Linting
 ~~~~~~~
+For this project we use pylint and flake8
 .. code:: bash
 
     $ pylint mt3scm -d "C0301,C0103,E0401" --fail-under=8

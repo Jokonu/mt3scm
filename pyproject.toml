@@ -25,6 +25,7 @@ toml = "^0.10.2"
 pylint = "^2.12.2"
 mypy = "^0.942"
 flake8 = "^4.0.1"
+isort = "^5.10.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -36,3 +37,9 @@ python_version = "3.9"
 warn_return_any = true
 warn_unused_configs = true
 ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+import_heading_stdlib="Standard Libraries Import"
+import_heading_thirdparty="Third Party Libraries Import"
+import_heading_firstparty="Own Libraries Import"
