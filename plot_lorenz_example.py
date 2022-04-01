@@ -117,7 +117,8 @@ def calc_unsupervised_metrics(X, label_array):
     mt3scm_metric = mt3.mt3scm_score(X, label_array, standardize_subs_curve=True)
     metrics_dict = {}
     metrics_dict["mt3scm"] = mt3scm_metric
-    metrics_dict["cc"] = mt3.wcc
+    metrics_dict["wcc"] = mt3.wcc
+    metrics_dict["cc"] = mt3.cc
     metrics_dict["masc-pos"] = mt3.masc_pos
     metrics_dict["masc-kt"] = mt3.masc_kt
     metrics_dict["silhouette"] = silhouette_score(X, label_array)
@@ -166,9 +167,12 @@ def plot_random_examples(X: np.ndarray, dataset_name: str = ""):
             # Scatter plot
             # marker_sizes = np.log(kappa_X * tau_X * 100 + 1) * 5
             marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
+            print(f"Drawing random example {number_of_sequences=} {min_seq_len=} {max_seq_len=}")
             ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], axs[subplots_index], labels=label_array, subplot_title=subtitle, marker_size_array=marker_sizes)
             idx += 1
-    plt.savefig(f"ClusterMetricComparisonRandom-{dataset_name}.png", dpi=300)
+    plot_name = f"ClusterMetricComparisonRandom-{dataset_name}.png"
+    print(f"Saving plot with name: {plot_name}")
+    plt.savefig(plot_name, dpi=300)
     plt.close()
 
 
@@ -199,7 +203,6 @@ def plot_agglomerative_clustering_example(X: np.ndarray, dataset_name: str = "",
             axs = subfigs[subfig_index][0].subplots(1, len(linkage_list), subplot_kw=dict(projection="3d"), squeeze=False)
             subfigs[subfig_index][0].suptitle(f"connectivity = {connectivity is not None}, n_clusters = {n_c}")
             for subplots_index, linkage in enumerate(linkage_list):
-                print(f"Metrics for connectivity={connectivity is not None}, {linkage=}, {n_c=}")
                 model = AgglomerativeClustering(linkage=linkage, connectivity=connectivity, n_clusters=n_c)
                 model.fit(X)
                 metrics, kappa_X, tau_X = calc_unsupervised_metrics(X, model.labels_)
@@ -214,10 +217,13 @@ def plot_agglomerative_clustering_example(X: np.ndarray, dataset_name: str = "",
                 subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}} {linkage=},\n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, masc-pos={metrics['masc-pos']:.3f}, masc-kt={metrics['masc-kt']:.3f},\nsil={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
                 # Scatter plot
                 marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
+                print(f"Drawing agglomerative example connectivity={connectivity is not None} {n_c=} {linkage=}")
                 ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], axs[0][subplots_index], labels=model.labels_, subplot_title=subtitle, marker_size_array=marker_sizes)
                 idx += 1
             subfig_index += 1
-    plt.savefig(f"ClusterMetricComparisonAgglomerative-{dataset_name}.png", dpi=300)
+    plot_name = f"ClusterMetricComparisonAgglomerative-{dataset_name}.png"
+    print(f"Saving plot with name: {plot_name}")
+    plt.savefig(plot_name, dpi=300)
     plt.close()
     # df_metrics.to_csv("ClusterMetricComparisonResults.csv")
 
@@ -248,10 +254,23 @@ def plot_one_example():
     df_thomas = generate_thomas_attractor_data(dt=0.05, num_steps=10000, b = 0.1)
     X_thomas = StandardScaler().fit_transform(df_thomas.values)
     datasets = {"thomas_single_example": X_thomas}
+    # np.seterr(all='raise')
+    np.seterr(all='warn')
     for name, data in datasets.items():
         plot_agglomerative_clustering_example(data, dataset_name=name, n_clusters=[10], connect=[kneighbors_graph(X_thomas, 100, include_self=True, n_jobs=-1)], linkage_list=["ward"])
 
 
 if __name__ == "__main__":
-    # plot_one_example()
-    plot_examples()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-o", "--one-only", dest="one", help="plot only a single example", action="store_true")
+    args = parser.parse_args()
+    if args.one is True:
+        print(f"Plotting a single example only..")
+        plot_one_example()
+        print(f"Done")
+    else:
+        print(f"Plotting all examples..")
+        plot_examples()
+        print(f"Done")
+

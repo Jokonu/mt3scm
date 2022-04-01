@@ -276,8 +276,11 @@ class MT3SCM:
             stds[name] = np.nanstd(feature)
         subs_curve_data = []
         subs_center_data = []
+        # np.seterr(all='raise')
         # Iterate over unique labels or cluster ids
         for cluster_id in uniq_labels:
+            features_data_C = np.empty((1, len(features.keys())))
+            features_data_C = None
             # Find consecutive subsequences per cluster
             df_subs = find_subsequence_groups_per_label(labels, cluster_id)
             sccs = []
@@ -304,34 +307,38 @@ class MT3SCM:
                     [int(cluster_id), int(subsequence_id), std_pos]
                     + center_pos.tolist()
                 )
-                if seq_len > n_min_subs:
-                    features_S = {}
-                    for name, feature in features.items():
-                        features_S[name] = feature[idx_start:idx_end]
-                    # concat the feature value arrays
-                    features_data = np.concatenate([np.expand_dims(features_S[key], axis=1) for key in sorted(features_S)], 1)
-                    # features_data = np.concatenate([np.expand_dims(normeds[key], axis=1) for key in sorted(normeds)], 1)
-                    # Compute the subsequence curvature consistency (scc)
-                    scc = 1 - (np.sum(np.std(features_data, axis=0)) / features_data.shape[1])
-                    # Compute the subsequence mean curvature and torsion
-                    mean_normeds = features_data.mean(axis=0)
-                    # Create array of this subsequence id and mean kappa and tau
-                    subs_curve = np.array([int(cluster_id),int(subsequence_id),std_pos])
-                    subs_curve = np.concatenate([subs_curve, mean_normeds], axis=0)
-                    subs_curve_data.append(subs_curve)
-                    sccs.append(scc)
-                else:
-                    # If the length of the subsequence is below the threshold, we consider it as not optimal and give a curvature consistency of 0.
-                    sccs.append(0)
-                    mean_normeds = np.zeros(len(features.keys()))
-                    # Create array of this subsequence id and mean kappa and tau
-                    subs_curve = np.array([int(cluster_id),int(subsequence_id),std_pos])
-                    subs_curve = np.concatenate([subs_curve, mean_normeds], axis=0)
-                    subs_curve_data.append(subs_curve)
+                features_S = {}
+                for name, feature in features.items():
+                    features_S[name] = feature[idx_start:idx_end]
+                # concat the feature value arrays
+                features_data = np.concatenate([np.expand_dims(features_S[key], axis=1) for key in sorted(features_S)], 1)
+                # collect feature data over this cluster
+                # features_data_C = np.concatenate([features_data_C, features_data], axis=0)
+                features_data_C = np.vstack((features_data_C, features_data)) if features_data_C is not None else features_data
+                mean_normeds = features_data.mean(axis=0)
+                subs_curve = np.array([int(cluster_id),int(subsequence_id),std_pos])
+                subs_curve = np.concatenate([subs_curve, mean_normeds], axis=0)
+                subs_curve_data.append(subs_curve)
+                # Compute the subsequence curvature consistency (scc) with scc = 1 - s
+                # where the empirical standard deviation (or unbiased sample standard deviation) for each feature vector {\overline {x}} is: s =\sqrt{{\frac {1}{n-1}}\sum \limits _{i=1}^{n}\left(x_{i}-{\overline {x}}\right)^{2}}
+                # s = np.sqrt(np.power((features_data - features_data.mean(axis=0)), 2).sum(axis=0) / (features_data.shape[0] - 1))
+                # This is equivalent to:
+                # s = np.std(features_data, axis=0, ddof=1)
+
                 np_c += seq_len  # sum the number of points per sequence in this cluster
+            # Compute the cluster curvature consistency (ccc) with ...
+            if features_data_C.shape[0] == 1:
+                # TODO This is subject for calibration! How to penalize clusters with only one subsequence?
+                sccs = 0
+            else:
+                sccs = 1 - np.std(features_data_C, axis=0, ddof=1)
+            # restrict it to 1 and -1
+            sccs = np.clip(sccs, a_max=1, a_min=-1)
             # Compute the cluster curvature consistency (ccc) with the arithmetic mean of the sccs
-            # cccs.append(stats.hmean(sccs))
+            # sccs = np.stack(sccs)
             self.cccs.append(np.mean(sccs))
+            # TODO: should i split these up?
+            # self.cccs.append(sccs)
             self.np_cs.append(np_c)  # collect the number of points per cluster
         # Mean normalized kappa and tau for each subsequence. Stack and create DataFrame
         cluster_curve_data = np.stack(subs_curve_data)
@@ -358,16 +365,14 @@ class MT3SCM:
         # Compute adapted silhouette coefficient using kappa and tau
         self.ascs_kt = compute_adapted_silhouette(self.df_curve, self.eps, distance_fn=self.distance_fn)
         # Arithmetik mean cluster curvature consistency
+        import pdb;pdb.set_trace()
         self.cc = np.mean(self.cccs)
         # Calculate the mean cluster curvature consistency by weighing with the number of datapoints per cluster:
-        self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(
-            np.array(self.np_cs)
-        )
+        self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(np.array(self.np_cs))
         # Mean adapted silhouette scores
         self.masc_pos = np.mean(self.ascs_pos[:, 2])
         self.masc_kt = np.mean(self.ascs_kt[:, 2])
         self.masc = (self.masc_kt + self.masc_pos) / 2
-        self.metric = (self.wcc + self.masc) / 2
-        # self.metric = (self.cc + self.masc_pos + self.masc_kt) / 3
-        # TODO test if input is already standardized, what the extra standardization that was implemented before is good for?!
+        # self.metric = (self.wcc + self.masc) / 2
+        self.metric = (self.cc + self.masc_pos + self.masc_kt) / 3
         return self.metric
