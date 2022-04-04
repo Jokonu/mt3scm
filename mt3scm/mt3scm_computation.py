@@ -121,7 +121,10 @@ def find_subsequence_groups_per_label(label_array: np.ndarray, label: int):
 
 
 def compute_adapted_silhouette(
-    df: pd.DataFrame, min_distance: float = 1e-2, eps: float = 1e-5, distance_fn: str = "euclidean"
+    df: pd.DataFrame,
+    min_distance: float = 1e-2,
+    eps: float = 1e-5,
+    distance_fn: str = "euclidean",
 ) -> np.ndarray:
     df_mean_cluster = df.groupby(["c_id"]).mean()
     # If only one cluster found, then set asc to 0:
@@ -142,14 +145,16 @@ def compute_adapted_silhouette(
                         group.drop((name, name_s)).mean(axis=0).values
                     )
                     if distance_fn == "euclidean":
-                        dist_As = float(np.linalg.norm(mean_location_A_except_this - location_s))
+                        dist_As = float(
+                            np.linalg.norm(mean_location_A_except_this - location_s)
+                        )
                     elif distance_fn == "manhatten":
-                        dist_As = np.sum(np.absolute(mean_location_A_except_this - location_s))
-                        # dist_As = float(cityblock(mean_location_A_except_this, location_s))
+                        dist_As = np.sum(
+                            np.absolute(mean_location_A_except_this - location_s)
+                        )
                     dist_As = 0 if (np.absolute(dist_As) < min_distance) else dist_As
                 else:
-                    # mean_location_A_except_this = location_s
-                    # dist_As = np.linalg.norm(location_s - np.absolute(location_s * df.index.get_level_values("std")[0]))
+                    # Set adapted silhouette coefficient to zero, since only one subsequence per cluster
                     dist_As = 0
                 # Calc distance to all other mean cluster centers
                 # Drop current cluster and substract current subsequence location from all other cluster mean centers
@@ -177,24 +182,34 @@ def compute_adapted_silhouette(
 
 
 class MT3SCM:
-    def __init__(self, eps: float = 1e-8, include_speed_acceleration: bool = False, distance_fn: str = "manhatten") -> None:
+    def __init__(
+        self,
+        eps: float = 1e-8,
+        include_speed_acceleration: bool = False,
+        distance_fn: str = "manhatten",
+    ) -> None:
         self.eps = eps
-        self.cc:float = 0.0
-        self.wcc:float = 0.0
-        self.masc_pos:float = 0.0
-        self.masc_kt:float = 0.0
-        self.masc:float = 0.0
-        self.metric:float = 0.0
-        self.cc:float = 0.0
-        self.cccs:list = []
-        self.np_cs:list = []
+        self.cc: float = 0.0
+        self.wcc: float = 0.0
+        self.masc_pos: float = 0.0
+        self.masc_kt: float = 0.0
+        self.masc: float = 0.0
+        self.metric: float = 0.0
+        self.cccs: list = []
+        self.np_cs: list = []
         self.kappa_X: np.ndarray = np.array([])
         self.tau_X: np.ndarray = np.array([])
         self.speed_X: np.ndarray = np.array([])
         self.acceleration_X: np.ndarray = np.array([])
+        self.ascs_pos: np.ndarray = np.array([])
+        self.ascs_kt: np.ndarray = np.array([])
         self.include_speed_acceleration: bool = include_speed_acceleration
         self.scale_input_data: bool = True
-        self.distance_fn: str = distance_fn if (distance_fn in ["manhatten", "euclidean"]) else "manhatten"
+        self.distance_fn: str = (
+            distance_fn if (distance_fn in ["manhatten", "euclidean"]) else "manhatten"
+        )
+        self.df_curve: pd.DataFrame = pd.DataFrame()
+        self.df_centers: pd.DataFrame = pd.DataFrame()
 
     def mt3scm_score(
         self, X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True
@@ -255,13 +270,25 @@ class MT3SCM:
         if standardize_subs_curve is True:
             scaler = StandardScaler()
             # Switch dimensions here since the scaler scales on feature axis shape (n_samples, n_features)
-            curve_data = np.array(curve_data).T
-            curve_norm_data = scaler.fit_transform(curve_data).T
-        self.kappa_X, self.tau_X, self.speed_X, self.acceleration_X = curve_norm_data
+            curve_data_array = np.array(curve_data).T
+            curve_norm_data = scaler.fit_transform(curve_data_array).T
+            (
+                self.kappa_X,
+                self.tau_X,
+                self.speed_X,
+                self.acceleration_X,
+            ) = curve_norm_data
+        else:
+            self.kappa_X, self.tau_X, self.speed_X, self.acceleration_X = curve_data
         # import pdb;pdb.set_trace()
 
         if self.include_speed_acceleration is True:
-            features = {"kappa": self.kappa_X, "tau": self.tau_X, "speed": self.speed_X, "acceleration":self.acceleration_X}
+            features = {
+                "kappa": self.kappa_X,
+                "tau": self.tau_X,
+                "speed": self.speed_X,
+                "acceleration": self.acceleration_X,
+            }
         else:
             features = {"kappa": self.kappa_X, "tau": self.tau_X}
         mins = {}
@@ -276,14 +303,12 @@ class MT3SCM:
             stds[name] = np.nanstd(feature)
         subs_curve_data = []
         subs_center_data = []
-        # np.seterr(all='raise')
         # Iterate over unique labels or cluster ids
         for cluster_id in uniq_labels:
-            features_data_C = np.empty((1, len(features.keys())))
-            features_data_C = None
+            features_data_C_list: list[np.ndarray] = []
             # Find consecutive subsequences per cluster
             df_subs = find_subsequence_groups_per_label(labels, cluster_id)
-            sccs = []
+            sccs: np.ndarray = np.array([])
             np_c = 0
             # Iterate over each subsequence in this cluster
             for subsequence_id, row in enumerate(df_subs.itertuples(index=False)):
@@ -311,12 +336,19 @@ class MT3SCM:
                 for name, feature in features.items():
                     features_S[name] = feature[idx_start:idx_end]
                 # concat the feature value arrays
-                features_data = np.concatenate([np.expand_dims(features_S[key], axis=1) for key in sorted(features_S)], 1)
+                features_data = np.concatenate(
+                    [
+                        np.expand_dims(features_S[key], axis=1)
+                        for key in sorted(features_S)
+                    ],
+                    1,
+                )
                 # collect feature data over this cluster
                 # features_data_C = np.concatenate([features_data_C, features_data], axis=0)
-                features_data_C = np.vstack((features_data_C, features_data)) if features_data_C is not None else features_data
+                # features_data_C = np.vstack((features_data_C, features_data)) if features_data_C == 0 else features_data
                 mean_normeds = features_data.mean(axis=0)
-                subs_curve = np.array([int(cluster_id),int(subsequence_id),std_pos])
+                features_data_C_list.append(features_data)
+                subs_curve = np.array([int(cluster_id), int(subsequence_id), std_pos])
                 subs_curve = np.concatenate([subs_curve, mean_normeds], axis=0)
                 subs_curve_data.append(subs_curve)
                 # Compute the subsequence curvature consistency (scc) with scc = 1 - s
@@ -327,18 +359,20 @@ class MT3SCM:
 
                 np_c += seq_len  # sum the number of points per sequence in this cluster
             # Compute the cluster curvature consistency (ccc) with ...
+            features_data_C: np.ndarray = np.vstack(features_data_C_list)
             if features_data_C.shape[0] == 1:
                 # TODO This is subject for calibration! How to penalize clusters with only one subsequence?
-                sccs = 0
+                single_subsequence_in_cluster_value: float = 0.0
+                sccs = np.full(
+                    features_data_C.shape[1], single_subsequence_in_cluster_value
+                )
             else:
                 sccs = 1 - np.std(features_data_C, axis=0, ddof=1)
             # restrict it to 1 and -1
             sccs = np.clip(sccs, a_max=1, a_min=-1)
-            # Compute the cluster curvature consistency (ccc) with the arithmetic mean of the sccs
-            # sccs = np.stack(sccs)
+            # Collect the cluster curvature consistencies (ccc) with the arithmetic mean of the sccs
             self.cccs.append(np.mean(sccs))
-            # TODO: should i split these up?
-            # self.cccs.append(sccs)
+            # TODO: should keep those split up? like: self.cccs.append(sccs)
             self.np_cs.append(np_c)  # collect the number of points per cluster
         # Mean normalized kappa and tau for each subsequence. Stack and create DataFrame
         cluster_curve_data = np.stack(subs_curve_data)
@@ -361,13 +395,19 @@ class MT3SCM:
             columns=[f"x{i}" for i in range(cluster_center_data[:, 3:].shape[1])],
         )
         # Compute adapted silhouette coefficient using cluster centers
-        self.ascs_pos = compute_adapted_silhouette(self.df_centers, self.eps, distance_fn=self.distance_fn)
+        self.ascs_pos = compute_adapted_silhouette(
+            self.df_centers, self.eps, distance_fn=self.distance_fn
+        )
         # Compute adapted silhouette coefficient using kappa and tau
-        self.ascs_kt = compute_adapted_silhouette(self.df_curve, self.eps, distance_fn=self.distance_fn)
+        self.ascs_kt = compute_adapted_silhouette(
+            self.df_curve, self.eps, distance_fn=self.distance_fn
+        )
         # Arithmetik mean cluster curvature consistency
         self.cc = np.mean(self.cccs)
         # Calculate the mean cluster curvature consistency by weighing with the number of datapoints per cluster:
-        self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(np.array(self.np_cs))
+        self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(
+            np.array(self.np_cs)
+        )
         # Mean adapted silhouette scores
         self.masc_pos = np.mean(self.ascs_pos[:, 2])
         self.masc_kt = np.mean(self.ascs_kt[:, 2])

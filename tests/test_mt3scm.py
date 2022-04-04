@@ -4,6 +4,7 @@
 # License: BSD 3 clause
 
 # Standard Libraries Import
+import inspect
 from pathlib import Path
 
 # Third Party Libraries Import
@@ -55,7 +56,8 @@ def test_helix():
     labels = np.concatenate([label, label2])
     X = np.stack((xs, ys, zs)).T
     score = mt3scm_score(X, labels)
-    assert score == pytest.approx(0.25, 0.05)
+    score_expected: float = -0.33
+    np.testing.assert_allclose(score, score_expected, atol=1e-2)
 
 # def test_helix2():
 #     n = 1000
@@ -91,7 +93,25 @@ def test_helix():
 #     score = mt3scm_score(X, labels)
 #     assert score == pytest.approx(0.5, 0.05)
 
-# # Create two constant curves for each cluster (only one subsequence per cluster). Metric should be approx 0.25 because torsion is always constant(zero) therefore the standard deviation is 1. The curvature is constant and has a
+def plot_testing_results(X:np.ndarray, score:float, labels:np.ndarray, test_name: str):
+    # Third Party Libraries Import
+    import matplotlib.pyplot as plt
+    plt.rcParams.update({"text.usetex": True, "font.family": "sans-serif", "font.sans-serif": ["Computer Modern Serif"], "axes.grid": False})
+    fig = plt.figure()
+    fig.suptitle(f"\\textbf{{MT3SCM: {test_name}}}")
+    ax = fig.add_subplot(projection='3d')
+    scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels)
+    subplot_title = f"mt3scm score={score:.3f}"
+    ax.set_title(subplot_title)
+    legend1 = ax.legend(*scatter.legend_elements(), loc="lower left", title="Clusters")
+    ax.add_artist(legend1)
+    test_plots_path: Path = Path("test_plots")
+    Path(test_plots_path).mkdir(parents=True, exist_ok=True)
+    full_plot_name: Path = test_plots_path / str(test_name +".png")
+    plt.savefig(full_plot_name)
+    plt.close()
+
+# # Create two constant curves for each cluster (only one subsequence per cluster). Metric should be approx 0.0 because only one subsequence per cluster means curvature consistency is zero, and curvatures, torsion, speed and acceleration are equal.
 def test_curvature():
     seq_length = 100
     x = np.linspace(start=0, stop=0.9, num=seq_length)
@@ -102,7 +122,9 @@ def test_curvature():
     x_all = np.linspace(start=0, stop=2, num=seq_length*2 - 1)
     X = np.stack((x_all, y_all, x_all)).T
     score = mt3scm_score(X, labels)
-    assert score == pytest.approx(0.25, 0.05)
+    plot_testing_results(X, score, labels, inspect.currentframe().f_code.co_name)
+    score_expected: float = 0.0
+    np.testing.assert_allclose(score, score_expected, atol=1e-2)
 
 def test_normalize():
     X = np.random.random((10000, 3))
@@ -110,17 +132,19 @@ def test_normalize():
     y2 = np.ones((5000)) + 1
     labels = np.concatenate((y1, y2), axis=0)
     score = mt3scm_score(X, labels, standardize_subs_curve=False)
-    # score = mt3scm_score(X, labels, standardize_subs_curve=True)
-    assert score + 1 == pytest.approx(1.5, rel=1e-1)
+    plot_testing_results(X, score, labels, inspect.currentframe().f_code.co_name)
+    score_expected: float = 0.15
+    np.testing.assert_allclose(score, score_expected, atol=5e-2)
 
 def test_standardize():
     X = np.random.random((10000, 3))
     y1 = np.ones((5000))
     y2 = np.ones((5000)) + 1
     labels = np.concatenate((y1, y2), axis=0)
-    # score = mt3scm_score(X, labels, standardize_subs_curve=False)
     score = mt3scm_score(X, labels, standardize_subs_curve=True)
-    assert 1 + score == pytest.approx(1,  rel=1e-2)
+    plot_testing_results(X, score, labels, inspect.currentframe().f_code.co_name)
+    score_expected: float = 0.0
+    np.testing.assert_allclose(score, score_expected, atol=5e-3)
 
 def test_constant_values():
     X = np.ones((1000, 3))

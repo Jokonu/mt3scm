@@ -259,6 +259,7 @@ def plot_one_example():
 
 
 if __name__ == "__main__":
+    # Standard Libraries Import
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("-o", "--one-only", dest="one", help="plot only a single example", action="store_true")
