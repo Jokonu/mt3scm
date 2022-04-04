@@ -7,7 +7,6 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics.cluster._unsupervised import check_number_of_labels
-from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.utils import check_X_y
 
@@ -359,7 +358,9 @@ class MT3SCM:
                 features_data_C_list.append(features_data)
                 # get mean feature vector for this subsequence
                 mean_normeds = features_data.mean(axis=0)
-                subs_curve = np.array([int(cluster_id), int(subsequence_id), std_pos, seq_len])
+                subs_curve = np.array(
+                    [int(cluster_id), int(subsequence_id), std_pos, seq_len]
+                )
                 subs_curve = np.concatenate([subs_curve, mean_normeds], axis=0)
                 subs_curve_data.append(subs_curve)
                 # Compute the subsequence curvature consistency (scc) with scc = 1 - s
@@ -419,7 +420,7 @@ class MT3SCM:
         # wcc = \sum_{}
         # self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(np.array(self.np_cs))
         # which is equivalent to:
-        self.wcc= np.average(self.cccs, weights=self.np_cs)
+        self.wcc = np.average(self.cccs, weights=self.np_cs)
         # Arithmetik mean cluster curvature consistency
         self.cc = np.mean(self.cccs)
         asc_pos_S = self.ascs_pos[:, 3]
