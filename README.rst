@@ -17,18 +17,21 @@ Comparison of unsupervised clustering metrics with lorenz attractor data
 This example shows the effect of different metrics on the lorenz attractor dataset when using different types of label arrays. For the different unsupervised clustering labels we use the AgglomerativeClustering algorithm by varying the connectivity and the linkage as well as the number of clusters (along the lines of the scikit-learn example: https://scikit-learn.org/stable/auto_examples/cluster/plot_agglomerative_clustering.html#sphx-glr-auto-examples-cluster-plot-agglomerative-clustering-py)
 
 
-.. image:: ClusterMetricComparison-Lorenz.png
+.. image:: ClusterMetricComparisonAgglomerative-lorenz.png
 
 Development steps
 -----------------
 Fromatting
 ~~~~~~~~~~
+Formatting is done with black and isort
 .. code:: bash
 
     $ black mt3scm
+    $ isort . --profile black
 
 Linting
 ~~~~~~~
+For this project we use pylint and flake8
 .. code:: bash
 
     $ pylint mt3scm -d "C0301,C0103,E0401" --fail-under=8

@@ -3,8 +3,8 @@ MT3SCM
 ======
 This module provides 'Multivariate Time Series Sub-Sequence CLustering Metric' computation function
 """
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
-from .mt3scm_computation import mt3scm_score, MT3SCM
+from .mt3scm_computation import MT3SCM, mt3scm_score
 
 __all__ = ["mt3scm_score", "MT3SCM"]
