@@ -113,7 +113,9 @@ def ax_scatter_3d(X, Y, Z, ax, labels, subplot_title: str = "Subplot Title", mar
 
 def calc_unsupervised_metrics(X, label_array):
     # Metric comutations
-    mt3 = MT3SCM(eps=5e-9, include_speed_acceleration=True, distance_fn="manhatten")
+    # mt3 = MT3SCM(eps=5e-9, include_speed_acceleration=True, distance_fn="manhatten")
+    mt3 = MT3SCM(eps=5e-9, include_acceleration=True, include_speed_acceleration=False, distance_fn="euclidean")
+    # mt3 = MT3SCM(eps=5e-9, include_acceleration=True, include_speed_acceleration=False, distance_fn="manhatten")
     mt3scm_metric = mt3.mt3scm_score(X, label_array, standardize_subs_curve=True)
     metrics_dict = {}
     metrics_dict["mt3scm"] = mt3scm_metric
@@ -163,7 +165,7 @@ def plot_random_examples(X: np.ndarray, dataset_name: str = ""):
             label_array = generate_random_sequences(length=X.shape[0], min_seq_length=min_seq_len, max_seq_length=max_seq_len, number_of_sequences=number_of_sequences)
             metrics, kappa_X, tau_X = calc_unsupervised_metrics(X, label_array)
             n_clusters = len(np.unique(label_array))
-            subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}}, n_clusters={n_clusters}, min={min_seq_len}, max={max_seq_len}, \n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, masc-pos={metrics['masc-pos']:.3f}, masc-kt={metrics['masc-kt']:.3f},\nsil={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
+            subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}}, n_clusters={n_clusters}, min={min_seq_len}, max={max_seq_len}, \n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, masc-pos={metrics['masc-pos']:.3f}, masc-kt={metrics['masc-kt']:.3f},\nsil={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
             # Scatter plot
             # marker_sizes = np.log(kappa_X * tau_X * 100 + 1) * 5
             marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
@@ -214,7 +216,7 @@ def plot_agglomerative_clustering_example(X: np.ndarray, dataset_name: str = "",
                 # res_df = pd.DataFrame(data, index=index, columns=cols)
                 # df_metrics = pd.concat([res_df, df_metrics], axis=0, verify_integrity=True, names=result_index_names)
 
-                subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}} {linkage=},\n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, masc-pos={metrics['masc-pos']:.3f}, masc-kt={metrics['masc-kt']:.3f},\nsil={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
+                subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}} {linkage=},\n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, masc-pos={metrics['masc-pos']:.3f}, masc-kt={metrics['masc-kt']:.3f},\nsil={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
                 # Scatter plot
                 marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
                 print(f"Drawing agglomerative example connectivity={connectivity is not None} {n_c=} {linkage=}")
@@ -253,9 +255,10 @@ def plot_one_example():
     # Get thomas attractor data as dataframe
     df_thomas = generate_thomas_attractor_data(dt=0.05, num_steps=10000, b = 0.1)
     X_thomas = StandardScaler().fit_transform(df_thomas.values)
-    datasets = {"thomas_single_example": X_thomas, "lorenz_single_example": X_lorenz}
+    # datasets = {"thomas_single_example": X_thomas, "lorenz_single_example": X_lorenz}
+    datasets = {"lorenz_single_example": X_lorenz}
     for name, data in datasets.items():
-        plot_agglomerative_clustering_example(data, dataset_name=name, n_clusters=[50], connect=[kneighbors_graph(data, 10, include_self=True, n_jobs=-1)], linkage_list=["ward"])
+        plot_agglomerative_clustering_example(data, dataset_name=name, n_clusters=[3], connect=[kneighbors_graph(data, 30, include_self=False, n_jobs=-1)], linkage_list=["average"])
 
 
 if __name__ == "__main__":
