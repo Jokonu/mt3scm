@@ -253,11 +253,9 @@ def plot_one_example():
     # Get thomas attractor data as dataframe
     df_thomas = generate_thomas_attractor_data(dt=0.05, num_steps=10000, b = 0.1)
     X_thomas = StandardScaler().fit_transform(df_thomas.values)
-    datasets = {"thomas_single_example": X_thomas}
-    # np.seterr(all='raise')
-    np.seterr(all='warn')
+    datasets = {"thomas_single_example": X_thomas, "lorenz_single_example": X_lorenz}
     for name, data in datasets.items():
-        plot_agglomerative_clustering_example(data, dataset_name=name, n_clusters=[10], connect=[kneighbors_graph(X_thomas, 100, include_self=True, n_jobs=-1)], linkage_list=["ward"])
+        plot_agglomerative_clustering_example(data, dataset_name=name, n_clusters=[50], connect=[kneighbors_graph(data, 10, include_self=True, n_jobs=-1)], linkage_list=["ward"])
 
 
 if __name__ == "__main__":

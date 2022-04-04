@@ -365,7 +365,6 @@ class MT3SCM:
         # Compute adapted silhouette coefficient using kappa and tau
         self.ascs_kt = compute_adapted_silhouette(self.df_curve, self.eps, distance_fn=self.distance_fn)
         # Arithmetik mean cluster curvature consistency
-        import pdb;pdb.set_trace()
         self.cc = np.mean(self.cccs)
         # Calculate the mean cluster curvature consistency by weighing with the number of datapoints per cluster:
         self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(np.array(self.np_cs))
