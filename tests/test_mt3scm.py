@@ -17,7 +17,7 @@ from mt3scm import __version__, mt3scm_score
 
 
 def test_version():
-    assert __version__ == '0.2.0'
+    assert __version__ == '0.3.0'
 
 
 def test_versions_are_in_sync():

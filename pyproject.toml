@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mt3scm"
-version = "0.2.0"
+version = "0.3.0"
 description = "Python package for 'Multivariate Time Series Sub-Sequence CLustering Metric'"
 authors = ["Jonas Köhne <jokohonas@gmail.com>"]
 maintainers = ["Jonas Köhne <jokohonas@gmail.com>"]
@@ -26,6 +26,7 @@ pylint = "^2.12.2"
 mypy = "^0.942"
 flake8 = "^4.0.1"
 isort = "^5.10.1"
+docutils = "^0.18.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
