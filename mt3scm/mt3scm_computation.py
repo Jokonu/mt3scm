@@ -7,6 +7,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.metrics.cluster._unsupervised import check_number_of_labels
+from sklearn.metrics import silhouette_score
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.utils import check_X_y
 
@@ -177,7 +178,8 @@ def compute_adapted_silhouette(
                     asc = -1
                 else:
                     asc = (dist_Bs - dist_As) / np.array([dist_As, dist_Bs]).max()
-                ascs.append([name, name_s, asc])
+                n_p = subsequence.reset_index()["n_p"].values[0]
+                ascs.append([name, name_s, n_p, asc])
     return np.stack(ascs)
 
 
@@ -186,6 +188,8 @@ class MT3SCM:
         self,
         eps: float = 1e-8,
         include_speed_acceleration: bool = False,
+        include_acceleration: bool = True,
+        weigh_metrics_on_n_points: bool = True,
         distance_fn: str = "manhatten",
     ) -> None:
         self.eps = eps
@@ -203,7 +207,9 @@ class MT3SCM:
         self.acceleration_X: np.ndarray = np.array([])
         self.ascs_pos: np.ndarray = np.array([])
         self.ascs_kt: np.ndarray = np.array([])
+        self.weigh_metrics_on_n_points: bool = weigh_metrics_on_n_points
         self.include_speed_acceleration: bool = include_speed_acceleration
+        self.include_acceleration: bool = include_acceleration
         self.scale_input_data: bool = True
         self.distance_fn: str = (
             distance_fn if (distance_fn in ["manhatten", "euclidean"]) else "manhatten"
@@ -289,6 +295,12 @@ class MT3SCM:
                 "speed": self.speed_X,
                 "acceleration": self.acceleration_X,
             }
+        elif self.include_acceleration is True:
+            features = {
+                "kappa": self.kappa_X,
+                "tau": self.tau_X,
+                "acceleration": self.acceleration_X,
+            }
         else:
             features = {"kappa": self.kappa_X, "tau": self.tau_X}
         mins = {}
@@ -329,7 +341,7 @@ class MT3SCM:
                 # Should this be the normalized data position?? If full data is already normalized then no!
                 center_pos = np.take(subs_data, subs_data.shape[0] // 2, axis=0)
                 subs_center_data.append(
-                    [int(cluster_id), int(subsequence_id), std_pos]
+                    [int(cluster_id), int(subsequence_id), std_pos, seq_len]
                     + center_pos.tolist()
                 )
                 features_S = {}
@@ -343,12 +355,11 @@ class MT3SCM:
                     ],
                     1,
                 )
-                # collect feature data over this cluster
-                # features_data_C = np.concatenate([features_data_C, features_data], axis=0)
-                # features_data_C = np.vstack((features_data_C, features_data)) if features_data_C == 0 else features_data
-                mean_normeds = features_data.mean(axis=0)
+                # collect feature data of this subsequence over the whole cluster
                 features_data_C_list.append(features_data)
-                subs_curve = np.array([int(cluster_id), int(subsequence_id), std_pos])
+                # get mean feature vector for this subsequence
+                mean_normeds = features_data.mean(axis=0)
+                subs_curve = np.array([int(cluster_id), int(subsequence_id), std_pos, seq_len])
                 subs_curve = np.concatenate([subs_curve, mean_normeds], axis=0)
                 subs_curve_data.append(subs_curve)
                 # Compute the subsequence curvature consistency (scc) with scc = 1 - s
@@ -358,8 +369,10 @@ class MT3SCM:
                 # s = np.std(features_data, axis=0, ddof=1)
 
                 np_c += seq_len  # sum the number of points per sequence in this cluster
-            # Compute the cluster curvature consistency (ccc) with ...
+            # Convert the collected feature data (curvature, torsion, speed, acceleration) of all subsequences of one cluster into an nd.array
             features_data_C: np.ndarray = np.vstack(features_data_C_list)
+            # Compute the cluster curvature consistency (ccc) with the empirical standard deviation (or unbiased sample standard deviation) for each feature vector {\overline {x}} is: s =\sqrt{{\frac {1}{n-1}}\sum \limits _{i=1}^{n}\left(x_{i}-{\overline {x}}\right)^{2}}.
+            # If the cluster consists only of one datapoint, set the ccc to zero.
             if features_data_C.shape[0] == 1:
                 # TODO This is subject for calibration! How to penalize clusters with only one subsequence?
                 single_subsequence_in_cluster_value: float = 0.0
@@ -378,21 +391,21 @@ class MT3SCM:
         cluster_curve_data = np.stack(subs_curve_data)
         column_names = [f"mean_{name}_norm" for name in features.keys()]
         self.df_curve = pd.DataFrame(
-            cluster_curve_data[:, 3:],
+            cluster_curve_data[:, 4:],
             index=pd.MultiIndex.from_arrays(
-                cluster_curve_data[:, 0:3].T.astype("int"),
-                names=["c_id", "s_id", "std"],
+                cluster_curve_data[:, 0:4].T.astype("int"),
+                names=["c_id", "s_id", "std", "n_p"],
             ),
             columns=column_names,
         )
         # Mean center position for each subsequence. Stack and create DataFrame
         cluster_center_data = np.stack(subs_center_data)
         self.df_centers = pd.DataFrame(
-            cluster_center_data[:, 3:],
+            cluster_center_data[:, 4:],
             index=pd.MultiIndex.from_arrays(
-                cluster_center_data[:, 0:3].T, names=["c_id", "s_id", "std"]
+                cluster_center_data[:, 0:4].T, names=["c_id", "s_id", "std", "n_p"]
             ),
-            columns=[f"x{i}" for i in range(cluster_center_data[:, 3:].shape[1])],
+            columns=[f"x{i}" for i in range(cluster_center_data[:, 4:].shape[1])],
         )
         # Compute adapted silhouette coefficient using cluster centers
         self.ascs_pos = compute_adapted_silhouette(
@@ -402,16 +415,31 @@ class MT3SCM:
         self.ascs_kt = compute_adapted_silhouette(
             self.df_curve, self.eps, distance_fn=self.distance_fn
         )
+        # Calculate the mean cluster curvature consistency by weighing with the number of datapoints per cluster:
+        # wcc = \sum_{}
+        # self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(np.array(self.np_cs))
+        # which is equivalent to:
+        self.wcc= np.average(self.cccs, weights=self.np_cs)
         # Arithmetik mean cluster curvature consistency
         self.cc = np.mean(self.cccs)
-        # Calculate the mean cluster curvature consistency by weighing with the number of datapoints per cluster:
-        self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(
-            np.array(self.np_cs)
-        )
-        # Mean adapted silhouette scores
-        self.masc_pos = np.mean(self.ascs_pos[:, 2])
-        self.masc_kt = np.mean(self.ascs_kt[:, 2])
-        self.masc = (self.masc_kt + self.masc_pos) / 2
-        # self.metric = (self.wcc + self.masc) / 2
-        self.metric = (self.cc + self.masc_pos + self.masc_kt) / 3
+        asc_pos_S = self.ascs_pos[:, 3]
+        asc_kt_S = self.ascs_kt[:, 3]
+        if self.weigh_metrics_on_n_points is True:
+            cc = self.wcc
+            # Weighted mean adapted silhouette scores
+            weights_S = self.ascs_pos[:, 2]
+            masc_pos = np.average(asc_pos_S, weights=weights_S)
+            weights_S = self.ascs_kt[:, 2]
+            masc_kt = np.average(asc_kt_S, weights=weights_S)
+        else:
+            cc = self.cc
+            # Mean adapted silhouette scores
+            ascs = self.ascs_pos[:, 3]
+            masc_pos = np.mean(self.ascs_pos[:, 3])
+            masc_kt = np.mean(self.ascs_kt[:, 3])
+        self.masc_pos = masc_pos
+        self.masc_kt = masc_kt
+        # self.masc = (self.masc_kt + self.masc_pos) / 2
+        # self.metric = (cc + self.masc) / 2
+        self.metric = (cc + self.masc_pos + self.masc_kt) / 3
         return self.metric
