@@ -17,7 +17,7 @@ Comparison of unsupervised clustering metrics with lorenz attractor data
 This example shows the effect of different metrics on the lorenz attractor dataset when using different types of label arrays. For the different unsupervised clustering labels we use the AgglomerativeClustering algorithm by varying the connectivity and the linkage as well as the number of clusters (along the lines of the scikit-learn example: https://scikit-learn.org/stable/auto_examples/cluster/plot_agglomerative_clustering.html#sphx-glr-auto-examples-cluster-plot-agglomerative-clustering-py)
 
 
-.. image:: ClusterMetricComparison-Lorenz.png
+.. image:: ClusterMetricComparisonAgglomerative-lorenz.png
 
 Development steps
 -----------------
