@@ -52,47 +52,6 @@ def derivative_calculation_per_feature(X: np.ndarray, eps: float = 1e-5):
     return deriv
 
 
-def compute_curvature(
-    X: np.ndarray, value_limit: float = 1e6, eps: float = 1e-5
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    gamma1 = derivative_calculation_per_feature(X, eps)
-    gamma2 = derivative_calculation_per_feature(gamma1, eps)
-    gamma3 = derivative_calculation_per_feature(gamma2, eps)
-    speed = np.sqrt(np.power(gamma1, 2).sum(axis=1))
-    acceleration = np.sqrt(np.power(gamma2, 2).sum(axis=1))
-
-    # Calculation from https://en.wikipedia.org/wiki/Differentiable_curve
-    # E1 is the first Frenet vector also known as the unit tangent vector
-    e1 = divide(gamma1, np.linalg.norm(gamma1, axis=1)[:, np.newaxis])
-    # E2 is the unit normal vector
-    part1 = np.einsum("ij,ij->i", gamma2, e1)
-    normal = gamma2 - np.multiply(part1[:, np.newaxis], e1)
-    e2 = divide(normal, np.linalg.norm(normal, axis=1)[:, np.newaxis])
-    # The first generalized curvature X1 = \kappa (t)
-    e1_d = derivative_calculation_per_feature(e1)
-    kappa = divide(np.einsum("ij,ij->i", e1_d, e2), np.linalg.norm(gamma1, axis=1))
-    # Should be equivalent to:
-    # kappa = divide(np.linalg.norm(e1_d, axis=1), np.linalg.norm(gamma1, axis=1))
-    # E3 is the binormal vector
-    part1 = np.einsum("ij,ij->i", gamma3, e1)
-    part2 = np.einsum("ij,ij->i", gamma3, e2)
-    e3 = (
-        gamma3
-        - np.multiply(part1[:, np.newaxis], e1)
-        - np.multiply(part2[:, np.newaxis], e2)
-    )
-    E3 = divide(e3, np.linalg.norm(e3, axis=1)[:, np.newaxis])
-    # Torsion is the second generalized curvature X2 = \tau(t)
-    e2_d = derivative_calculation_per_feature(e2)
-    tau = divide(np.einsum("ij,ij->i", e2_d, E3), np.linalg.norm(gamma1, axis=1))
-    # Replace all -inf and inf values with the finite min and max
-    tau = np.clip(tau, a_max=value_limit, a_min=-value_limit)
-    kappa = np.clip(kappa, a_max=value_limit, a_min=-value_limit)
-    tau = np.nan_to_num(tau, posinf=value_limit, neginf=-value_limit)
-    kappa = np.nan_to_num(kappa, posinf=value_limit, neginf=-value_limit)
-    return kappa, tau, speed, acceleration
-
-
 def find_subsequence_groups_per_label(label_array: np.ndarray, label: int):
     """This function creates a DataFrame with 'start' and 'end' index values for each occurrence of consecutive 'True' values provided by the Series created from the mask_labels. mask_labels is a True False Array which is True where the 'label' parameter is found in the 'label_array' parameter
 
@@ -216,6 +175,47 @@ class MT3SCM:
         self.df_curve: pd.DataFrame = pd.DataFrame()
         self.df_centers: pd.DataFrame = pd.DataFrame()
 
+    @staticmethod
+    def compute_curvature(
+        X: np.ndarray, value_limit: float = 1e6, eps: float = 1e-5
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        gamma1 = derivative_calculation_per_feature(X, eps)
+        gamma2 = derivative_calculation_per_feature(gamma1, eps)
+        gamma3 = derivative_calculation_per_feature(gamma2, eps)
+        speed = np.sqrt(np.power(gamma1, 2).sum(axis=1))
+        acceleration = np.sqrt(np.power(gamma2, 2).sum(axis=1))
+
+        # Calculation from https://en.wikipedia.org/wiki/Differentiable_curve
+        # E1 is the first Frenet vector also known as the unit tangent vector
+        e1 = divide(gamma1, np.linalg.norm(gamma1, axis=1)[:, np.newaxis])
+        # E2 is the unit normal vector
+        part1 = np.einsum("ij,ij->i", gamma2, e1)
+        normal = gamma2 - np.multiply(part1[:, np.newaxis], e1)
+        e2 = divide(normal, np.linalg.norm(normal, axis=1)[:, np.newaxis])
+        # The first generalized curvature X1 = \kappa (t)
+        e1_d = derivative_calculation_per_feature(e1)
+        kappa = divide(np.einsum("ij,ij->i", e1_d, e2), np.linalg.norm(gamma1, axis=1))
+        # Should be equivalent to:
+        # kappa = divide(np.linalg.norm(e1_d, axis=1), np.linalg.norm(gamma1, axis=1))
+        # E3 is the binormal vector
+        part1 = np.einsum("ij,ij->i", gamma3, e1)
+        part2 = np.einsum("ij,ij->i", gamma3, e2)
+        e3 = (
+            gamma3
+            - np.multiply(part1[:, np.newaxis], e1)
+            - np.multiply(part2[:, np.newaxis], e2)
+        )
+        E3 = divide(e3, np.linalg.norm(e3, axis=1)[:, np.newaxis])
+        # Torsion is the second generalized curvature X2 = \tau(t)
+        e2_d = derivative_calculation_per_feature(e2)
+        tau = divide(np.einsum("ij,ij->i", e2_d, E3), np.linalg.norm(gamma1, axis=1))
+        # Replace all -inf and inf values with the finite min and max
+        tau = np.clip(tau, a_max=value_limit, a_min=-value_limit)
+        kappa = np.clip(kappa, a_max=value_limit, a_min=-value_limit)
+        tau = np.nan_to_num(tau, posinf=value_limit, neginf=-value_limit)
+        kappa = np.nan_to_num(kappa, posinf=value_limit, neginf=-value_limit)
+        return kappa, tau, speed, acceleration
+
     def mt3scm_score(
         self, X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True
     ):
@@ -271,7 +271,8 @@ class MT3SCM:
         # n_min_subs is the minimal number of points in a subsequence
         # Calculate the curvature and the torsion for all points and find min and max for normalization later
         # self.kappa_X, self.tau_X, self.speed_X, self.acceleration_X = compute_curvature(X, eps=self.eps)
-        curve_data = compute_curvature(X, eps=self.eps)
+        # curve_data = compute_curvature(X, eps=self.eps)
+        curve_data = self.compute_curvature(X, eps=self.eps)
         if standardize_subs_curve is True:
             scaler = StandardScaler()
             # Switch dimensions here since the scaler scales on feature axis shape (n_samples, n_features)
