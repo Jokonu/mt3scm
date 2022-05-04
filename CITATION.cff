@@ -5,7 +5,7 @@ authors:
   given-names: "Jonas"
   orcid: "https://orcid.org/0000-0001-5536-9604"
 title: "mt3scm"
-version: 1.0.0
+version: 0.3.0
 doi: 10.5281/zenodo.1234
 date-released: 2022-05-04
 url: "https://github.com/Jokonu/mt3scm"
