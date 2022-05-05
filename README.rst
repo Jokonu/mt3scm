@@ -21,7 +21,7 @@ This example shows the effect of different metrics on the lorenz attractor datas
 
 Development steps
 -----------------
-Fromatting
+Formatting
 ~~~~~~~~~~
 Formatting is done with black and isort
 .. code:: bash

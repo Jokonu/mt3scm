@@ -24,7 +24,7 @@ legend.edgecolor: 0.9
 legend.borderpad: 0.2
 legend.columnspacing: 1.5
 legend.labelspacing:  0.4
-text.usetex: False
+text.usetex: True
 axes.titlelocation: left
 axes.formatter.use_mathtext: True
 axes.autolimit_mode: round_numbers
@@ -39,15 +39,9 @@ axes.grid: False
 figure.titlesize: 18
 figure.dpi: 300
 
-xtick.labelsize: 16
-ytick.labelsize: 16
-font.size: 15
 figure.autolayout: True
-figure.figsize: 7.2,4.45
-axes.titlesize : 16
-axes.labelsize : 17
 lines.linewidth : 2
 lines.markersize : 6
-legend.fontsize: 13
 mathtext.fontset: stix
-font.family: STIXGeneral
+font.family: serif
+font.sans-serif: Computer Modern Roman

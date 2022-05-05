@@ -4,11 +4,14 @@
 # License: BSD 3 clause
 
 # Third Party Libraries Import
+import pdb
 import numpy as np
 import pandas as pd
 from sklearn.metrics.cluster._unsupervised import check_number_of_labels
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.utils import check_X_y
+from sklearn.metrics import silhouette_score, silhouette_samples
+import matplotlib.pyplot as plt
 
 
 def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True):
@@ -44,7 +47,7 @@ def divide(*args, **kwargs):
 def derivative_calculation_per_feature(X: np.ndarray, eps: float = 1e-5):
     dts = []
     for dim in range(X.shape[1]):
-        dx_dt = np.gradient(X[:, dim])
+        dx_dt = np.gradient(X[:, dim], edge_order=2)
         dts.append(dx_dt)
     deriv = np.stack(dts, axis=1)
     # Set absolute gradients which are lower than eps value to zero
@@ -149,6 +152,7 @@ class MT3SCM:
         include_acceleration: bool = True,
         weigh_metrics_on_n_points: bool = True,
         distance_fn: str = "manhatten",
+        scale_input_data: bool = True
     ) -> None:
         self.eps = eps
         self.cc: float = 0.0
@@ -168,7 +172,7 @@ class MT3SCM:
         self.weigh_metrics_on_n_points: bool = weigh_metrics_on_n_points
         self.include_speed_acceleration: bool = include_speed_acceleration
         self.include_acceleration: bool = include_acceleration
-        self.scale_input_data: bool = True
+        self.scale_input_data: bool = scale_input_data
         self.distance_fn: str = (
             distance_fn if (distance_fn in ["manhatten", "euclidean"]) else "manhatten"
         )
@@ -177,7 +181,7 @@ class MT3SCM:
 
     @staticmethod
     def compute_curvature(
-        X: np.ndarray, value_limit: float = 1e6, eps: float = 1e-5
+        X: np.ndarray, value_limit: float = 1e5, eps: float = 1e-5
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         gamma1 = derivative_calculation_per_feature(X, eps)
         gamma2 = derivative_calculation_per_feature(gamma1, eps)
@@ -194,7 +198,21 @@ class MT3SCM:
         e2 = divide(normal, np.linalg.norm(normal, axis=1)[:, np.newaxis])
         # The first generalized curvature X1 = \kappa (t)
         e1_d = derivative_calculation_per_feature(e1)
+        # Calculating the scalar product for each row of the two matrices to get the same dimension for kappa as the time steps
         kappa = divide(np.einsum("ij,ij->i", e1_d, e2), np.linalg.norm(gamma1, axis=1))
+        # Using formula from https://en.wikipedia.org/wiki/Curvature#Space_curves
+        # g1 = np.gradient(X, axis=0)
+        # g2 = np.gradient(g1, axis=0)
+        # # import pdb;pdb.set_trace()
+        # first = np.linalg.norm(g1, axis=1)**2
+        # second = np.linalg.norm(g2, axis=1)**2
+        # third = np.einsum("ij,ij->i", g1, g2)**2
+        # top = np.sqrt((first * second) - (third))
+        # bottom = np.linalg.norm(g1, axis=1) ** 3
+        # kappa = np.divide(top, bottom)
+        plt.plot(np.array(kappa))
+        plt.savefig("debug_inside")
+        plt.close()
         # Should be equivalent to:
         # kappa = divide(np.linalg.norm(e1_d, axis=1), np.linalg.norm(gamma1, axis=1))
         # E3 is the binormal vector
@@ -217,7 +235,7 @@ class MT3SCM:
         return kappa, tau, speed, acceleration
 
     def mt3scm_score(
-        self, X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True
+        self, X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True, edge_offset: int = 1, max_curve_parameter_value: float = 1e4
     ):
         """Compute the multivariate time series-subsequence clustering metric (mt3scm) score.
         #TODO: Explanation here!
@@ -272,7 +290,7 @@ class MT3SCM:
         # Calculate the curvature and the torsion for all points and find min and max for normalization later
         # self.kappa_X, self.tau_X, self.speed_X, self.acceleration_X = compute_curvature(X, eps=self.eps)
         # curve_data = compute_curvature(X, eps=self.eps)
-        curve_data = self.compute_curvature(X, eps=self.eps)
+        curve_data = self.compute_curvature(X, eps=self.eps, value_limit=max_curve_parameter_value)
         if standardize_subs_curve is True:
             scaler = StandardScaler()
             # Switch dimensions here since the scaler scales on feature axis shape (n_samples, n_features)
@@ -286,7 +304,6 @@ class MT3SCM:
             ) = curve_norm_data
         else:
             self.kappa_X, self.tau_X, self.speed_X, self.acceleration_X = curve_data
-        # import pdb;pdb.set_trace()
 
         if self.include_speed_acceleration is True:
             features = {
@@ -303,16 +320,16 @@ class MT3SCM:
             }
         else:
             features = {"kappa": self.kappa_X, "tau": self.tau_X}
-        mins = {}
-        maxs = {}
-        means = {}
-        stds = {}
-        # Do calculations for all features based on all data:
-        for name, feature in features.items():
-            mins[name] = feature.min()
-            maxs[name] = feature.max()
-            means[name] = feature.mean()
-            stds[name] = np.nanstd(feature)
+        # mins = {}
+        # maxs = {}
+        # means = {}
+        # stds = {}
+        # # Do calculations for all features based on all data:
+        # for name, feature in features.items():
+        #     mins[name] = feature.min()
+        #     maxs[name] = feature.max()
+        #     means[name] = feature.mean()
+        #     stds[name] = np.nanstd(feature)
         subs_curve_data = []
         subs_center_data = []
         # Iterate over unique labels or cluster ids
@@ -324,8 +341,8 @@ class MT3SCM:
             np_c = 0
             # Iterate over each subsequence in this cluster
             for subsequence_id, row in enumerate(df_subs.itertuples(index=False)):
-                idx_start = row[0]
-                idx_end = row[1] + 1
+                idx_start = row[0] + edge_offset
+                idx_end = row[1] + 1 - edge_offset
                 seq_len = idx_end - idx_start
                 # Get the data of this subsequence
                 subs_data = X[idx_start:idx_end]
@@ -334,9 +351,9 @@ class MT3SCM:
                     norm_subs_data = (subs_data - data_min) / (data_max - data_min)
                     std_pos = norm_subs_data.std(axis=0).mean()
                 else:
+                    # Calculate standard deviation for the normalized subsequence data
                     std_pos = subs_data.std(axis=0).mean()
-                # Calculate standard deviation for the normalized subsequence data
-                std_pos = subs_data.std(axis=0).mean()
+                # std_pos = subs_data.std(axis=0).mean()
                 # Get the center position as the middle of the subsequence
                 # Should this be the normalized data position?? If full data is already normalized then no!
                 center_pos = np.take(subs_data, subs_data.shape[0] // 2, axis=0)
@@ -348,6 +365,8 @@ class MT3SCM:
                 for name, feature in features.items():
                     features_S[name] = feature[idx_start:idx_end]
                 # concat the feature value arrays
+                key_names = [key for key in sorted(features_S)]
+                print(f"{key_names=}")
                 features_data = np.concatenate(
                     [
                         np.expand_dims(features_S[key], axis=1)
@@ -356,6 +375,7 @@ class MT3SCM:
                     1,
                 )
                 # collect feature data of this subsequence over the whole cluster
+                print(f"{cluster_id=} {subsequence_id=} features_data std={np.std(features_data, axis=0, ddof=1)}")
                 features_data_C_list.append(features_data)
                 # get mean feature vector for this subsequence
                 mean_normeds = features_data.mean(axis=0)
@@ -369,12 +389,15 @@ class MT3SCM:
                 # s = np.sqrt(np.power((features_data - features_data.mean(axis=0)), 2).sum(axis=0) / (features_data.shape[0] - 1))
                 # This is equivalent to:
                 # s = np.std(features_data, axis=0, ddof=1)
-
                 np_c += seq_len  # sum the number of points per sequence in this cluster
+                # print(f"{cluster_id=} {subsequence_id=} std={np.std(np.vstack(features_data_C_list), axis=0, ddof=1)}")
+                # import pdb;pdb.set_trace()
             # Convert the collected feature data (curvature, torsion, speed, acceleration) of all subsequences of one cluster into an nd.array
             features_data_C: np.ndarray = np.vstack(features_data_C_list)
             # Compute the cluster curvature consistency (ccc) with the empirical standard deviation (or unbiased sample standard deviation) for each feature vector {\overline {x}} is: s =\sqrt{{\frac {1}{n-1}}\sum \limits _{i=1}^{n}\left(x_{i}-{\overline {x}}\right)^{2}}.
-            # If the cluster consists only of one datapoint, set the ccc to zero.
+            # If the cluster consists only of one datapoint, set the ccc to zero.5
+            # features_data_C.shape = (2975, 3)
+            # features_data_C.shape[0] = 2975
             if features_data_C.shape[0] == 1:
                 # TODO This is subject for calibration! How to penalize clusters with only one subsequence?
                 single_subsequence_in_cluster_value: float = 0.0
@@ -383,15 +406,17 @@ class MT3SCM:
                 )
             else:
                 sccs = 1 - np.std(features_data_C, axis=0, ddof=1)
+                print(f"{cluster_id=} {subsequence_id=} {sccs=}")
             # restrict it to 1 and -1
             sccs = np.clip(sccs, a_max=1, a_min=-1)
+            # sccs.shape e.g. (3,)
             # Collect the cluster curvature consistencies (ccc) with the arithmetic mean of the sccs
             self.cccs.append(np.mean(sccs))
             # TODO: should keep those split up? like: self.cccs.append(sccs)
             self.np_cs.append(np_c)  # collect the number of points per cluster
         # Mean normalized kappa and tau for each subsequence. Stack and create DataFrame
         cluster_curve_data = np.stack(subs_curve_data)
-        column_names = [f"mean_{name}_norm" for name in features.keys()]
+        column_names = [f"mean_{name}_norm" for name in sorted(features.keys())]
         self.df_curve = pd.DataFrame(
             cluster_curve_data[:, 4:],
             index=pd.MultiIndex.from_arrays(
@@ -410,13 +435,12 @@ class MT3SCM:
             columns=[f"x{i}" for i in range(cluster_center_data[:, 4:].shape[1])],
         )
         # Compute adapted silhouette coefficient using cluster centers
-        self.ascs_pos = compute_adapted_silhouette(
-            self.df_centers, self.eps, distance_fn=self.distance_fn
-        )
+        # self.ascs_pos = compute_adapted_silhouette(self.df_centers, self.eps, distance_fn=self.distance_fn)
+        # self.ascs_pos = silhouette_score(self.df_centers.values, self.df_centers.index.get_level_values("c_id"))
+        self.ascs_pos = silhouette_samples(self.df_centers.values, self.df_centers.index.get_level_values("c_id"))
         # Compute adapted silhouette coefficient using kappa and tau
-        self.ascs_kt = compute_adapted_silhouette(
-            self.df_curve, self.eps, distance_fn=self.distance_fn
-        )
+        # self.ascs_kt = compute_adapted_silhouette(self.df_curve, self.eps, distance_fn=self.distance_fn)
+        self.ascs_kt = silhouette_samples(self.df_curve.values, self.df_curve.index.get_level_values("c_id"))
         # Calculate the mean cluster curvature consistency by weighing with the number of datapoints per cluster:
         # wcc = \sum_{}
         # self.wcc = np.sum(np.array(self.cccs) * np.array(self.np_cs)) / np.sum(np.array(self.np_cs))
@@ -424,14 +448,18 @@ class MT3SCM:
         self.wcc = np.average(self.cccs, weights=self.np_cs)
         # Arithmetik mean cluster curvature consistency
         self.cc = np.mean(self.cccs)
-        asc_pos_S = self.ascs_pos[:, 3]
-        asc_kt_S = self.ascs_kt[:, 3]
+        # asc_pos_S = self.ascs_pos[:, 3]
+        asc_pos_S = self.ascs_pos
+        # asc_kt_S = self.ascs_kt[:, 3]
+        asc_kt_S = self.ascs_kt
         if self.weigh_metrics_on_n_points is True:
             cc = self.wcc
             # Weighted mean adapted silhouette scores
-            weights_S = self.ascs_pos[:, 2]
+            # weights_S = self.ascs_pos[:, 2]
+            weights_S = self.df_centers.index.get_level_values("n_p")
             masc_pos = np.average(asc_pos_S, weights=weights_S)
-            weights_S = self.ascs_kt[:, 2]
+            # weights_S = self.ascs_kt[:, 2]
+            weights_S = self.df_curve.index.get_level_values("n_p")
             masc_kt = np.average(asc_kt_S, weights=weights_S)
         else:
             cc = self.cc

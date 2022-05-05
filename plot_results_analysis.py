@@ -17,7 +17,7 @@ import pandas as pd
 import numpy as np
 
 
-def analyse(dataset_names:list[str] = ["lorenz", "thomas"], algo_type_names:list[str] = ["Random", "Agglomerative"]):
+def analyse(dataset_names:list[str] = ["lorenz", "thomas"], algo_type_names:list[str] = ["Random", "Agglomerative", "TimeSeriesKMeans"]):
     plt.style.use('plot_style.txt')
     dfs = []
     full_index_set = set()
@@ -35,11 +35,12 @@ def analyse(dataset_names:list[str] = ["lorenz", "thomas"], algo_type_names:list
             im, cbar = heatmap(A, df_corr.columns.to_list(), df_corr.columns.to_list(), ax=ax, cmap=cmap, cbarlabel="pearson correlation")
             texts = annotate_heatmap(im, valfmt="{x:.1f}")
             # fig.tight_layout()
-            plt.savefig(f"ClusterMetricsCorrelation-{algo_type_name}-{dataset_name}.png")
+            plt.savefig(f"ClusterMetricsCorrelation-{algo_type_name}-{dataset_name}.png",bbox_inches='tight')
             plt.close()
             dfs.append(df.reset_index())
     df_all = pd.concat(dfs, axis=0)
     df_all = df_all.set_index(list(full_index_set)).sort_index()
+    df_all = df_all.rename(columns={"masc-pos":"sl", "masc-kt":"sp"})
     df_corr = df_all.corr()
     A = df_corr.values
     mask =  np.tri(A.shape[0], k=0)
@@ -49,7 +50,8 @@ def analyse(dataset_names:list[str] = ["lorenz", "thomas"], algo_type_names:list
     fig, ax = plt.subplots()
     im, cbar = heatmap(A, df_corr.columns.to_list(), df_corr.columns.to_list(), ax=ax, cmap=cmap, cbarlabel="pearson correlation")
     texts = annotate_heatmap(im, valfmt="{x:.1f}")
-    plt.savefig(f"ClusterMetricsCorrelation.png")
+    plt.tight_layout()
+    plt.savefig(f"ClusterMetricsCorrelation.png",bbox_inches='tight')
     plt.close()
 
 
