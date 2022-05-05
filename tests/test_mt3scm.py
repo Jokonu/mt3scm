@@ -16,6 +16,70 @@ import toml
 from mt3scm import __version__, mt3scm_score
 
 
+
+def gen_perfect_data():
+    # generate curve 1
+    start = (0, 0, 1)
+    end = (3*np.pi, 0, -1)
+    n_points = 60
+    t = np.linspace(start=start[0], stop=end[0], num=n_points)
+    xt = t
+    yt = np.sin(t)
+    zt = np.cos(t)
+    X1 = np.stack((xt, yt, zt)).T
+    labels1 = 1 + np.zeros(n_points)
+
+    # generate passing from curve 1 to 2
+    start = (3*np.pi, 0.01, -1)
+    end = (3*np.pi, -2, -1)
+    n_points = 100
+    # t = np.geomspace(start=start[1], stop=-end[1], num=n_points)
+    t = np.linspace(start=0.1, stop=2, num=n_points)
+    t = t**2 / 2
+    # t = np.geomspace(0.674, 100.0, num=1000)
+    xt = start[0] + np.zeros(n_points)
+    yt = -t
+    zt = start[2] + np.zeros(n_points)
+    X2 = np.stack((xt, yt, zt)).T
+    labels2 = 2 + np.zeros(n_points)
+
+    # generate curve2 from passing 1
+    start = (3.5*np.pi, -2, -1)
+    end = (0.5*np.pi, 2, 1)
+    n_points = 80
+    t = np.linspace(start=start[0], stop=end[0], num=n_points)
+    # t2 = np.linspace(start=3*np.pi, stop=0, num=n_points)
+    xt = np.linspace(start=3*np.pi, stop=0, num=n_points)
+    # xt = t - xt[0]
+    yt = np.cos(t) - 2
+    zt = np.sin(t)
+    X3 = np.stack((xt, yt, zt)).T
+    endpoint = (X3[-1, 0], X3[-1, 1], X3[-1, 2])
+    print(f"{endpoint=}")
+    labels3 = 3 + np.zeros(n_points)
+
+    # generate passing from curve 2 to 1
+    start = (0, -2, 1)
+    end = (0, 0.01, -1)
+    n_points = 50
+    # t = np.geomspace(start=0.01, stop=2, num=n_points)
+    t = np.linspace(start=0, stop=2, num=n_points)
+    t = t**2 / 2
+    # t = np.geomspace(0.674, 100.0, num=1000)
+    xt = start[0] + np.zeros(n_points)
+    # yt = np.flip(t)
+    yt = -t
+    zt = start[2] + np.zeros(n_points)
+    X4 = np.stack((xt, yt, zt)).T
+    labels4 = 4 + np.zeros(n_points)
+
+    X = np.concatenate([X1, X2, X3, X4])
+    X = np.concatenate([X, X+0.00001, X-0.00001])
+    labels = np.concatenate([labels1, labels2, labels3, labels4])
+    labels = np.concatenate([labels, labels, labels])
+    return X, labels
+
+
 def test_version():
     assert __version__ == '0.3.0'
 
@@ -33,6 +97,13 @@ def test_versions_are_in_sync():
 # Test for a straight line
 
 # Test for a constant helix for each cluster. since only one subsequence in cluster the adapted silhouette coefficient (asc) for the centers is zero. The asc for kappa and torsion is also zero.
+def test_perfect_data():
+    X, labels = gen_perfect_data()
+    score = mt3scm_score(X, labels, edge_offset=5)
+    score_expected: float = 1
+    np.testing.assert_allclose(score, score_expected, atol=1e-2)
+
+
 def test_helix():
     n = 1000
     theta_max = 4 * np.pi
