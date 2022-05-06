@@ -12,9 +12,9 @@ This python script analysis the results from the examples
 # Third Party Libraries Import
 import matplotlib
 import matplotlib.pyplot as plt
-from matplotlib import cm as cm
-import pandas as pd
 import numpy as np
+import pandas as pd
+from matplotlib import cm as cm
 
 
 def analyse(dataset_names:list[str] = ["lorenz", "thomas"], algo_type_names:list[str] = ["Random", "Agglomerative", "TimeSeriesKMeans"]):

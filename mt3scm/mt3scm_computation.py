@@ -4,19 +4,29 @@
 # License: BSD 3 clause
 
 # Third Party Libraries Import
-import pdb
 import numpy as np
 import pandas as pd
+from sklearn.metrics import silhouette_samples
 from sklearn.metrics.cluster._unsupervised import check_number_of_labels
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.utils import check_X_y
-from sklearn.metrics import silhouette_score, silhouette_samples
-import matplotlib.pyplot as plt
 
 
-def mt3scm_score(X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True, edge_offset: int = 1):
+def mt3scm_score(
+    X,
+    labels,
+    n_min_subs: int = 3,
+    standardize_subs_curve: bool = True,
+    edge_offset: int = 1,
+):
     cm = MT3SCM()
-    return cm.mt3scm_score(X, labels, n_min_subs=n_min_subs, standardize_subs_curve=standardize_subs_curve, edge_offset=edge_offset)
+    return cm.mt3scm_score(
+        X,
+        labels,
+        n_min_subs=n_min_subs,
+        standardize_subs_curve=standardize_subs_curve,
+        edge_offset=edge_offset,
+    )
 
 
 def check_data_constant_values(X: np.ndarray):
@@ -90,7 +100,7 @@ class MT3SCM:
         include_acceleration: bool = True,
         weigh_metrics_on_n_points: bool = True,
         distance_fn: str = "manhatten",
-        scale_input_data: bool = False
+        scale_input_data: bool = False,
     ) -> None:
         self.eps = eps
         self.cc: float = 0.0
@@ -159,7 +169,13 @@ class MT3SCM:
         return kappa, tau, speed, acceleration
 
     def mt3scm_score(
-        self, X, labels, n_min_subs: int = 3, standardize_subs_curve: bool = True, edge_offset: int = 3, max_curve_parameter_value: float = 1e4
+        self,
+        X,
+        labels,
+        n_min_subs: int = 3,
+        standardize_subs_curve: bool = True,
+        edge_offset: int = 3,
+        max_curve_parameter_value: float = 1e4,
     ):
         """Compute the multivariate time series-subsequence clustering metric (mt3scm) score.
         #TODO: Explanation here!
@@ -214,7 +230,9 @@ class MT3SCM:
         # Calculate the curvature and the torsion for all points and find min and max for normalization later
         # self.kappa_X, self.tau_X, self.speed_X, self.acceleration_X = compute_curvature(X, eps=self.eps)
         # curve_data = compute_curvature(X, eps=self.eps)
-        curve_data = self.compute_curvature(X, eps=self.eps, value_limit=max_curve_parameter_value)
+        curve_data = self.compute_curvature(
+            X, eps=self.eps, value_limit=max_curve_parameter_value
+        )
         if standardize_subs_curve is True:
             scaler = StandardScaler()
             # Switch dimensions here since the scaler scales on feature axis shape (n_samples, n_features)
@@ -279,7 +297,6 @@ class MT3SCM:
                 for name, feature in features.items():
                     features_S[name] = feature[idx_start:idx_end]
                 # concat the feature value arrays
-                key_names = [key for key in sorted(features_S)]
                 features_data = np.concatenate(
                     [
                         np.expand_dims(features_S[key], axis=1)
@@ -305,11 +322,9 @@ class MT3SCM:
             # Convert the collected feature data (curvature, torsion, speed, acceleration) of all subsequences of one cluster into an nd.array
             features_data_C: np.ndarray = np.vstack(features_data_C_list)
             # Compute the cluster curvature consistency (ccc) with the empirical standard deviation (or unbiased sample standard deviation) for each feature vector {\overline {x}} is: s =\sqrt{{\frac {1}{n-1}}\sum \limits _{i=1}^{n}\left(x_{i}-{\overline {x}}\right)^{2}}.
-            # If the cluster consists only of one datapoint, set the ccc to zero.5
-            # features_data_C.shape = (2975, 3)
-            # features_data_C.shape[0] = 2975
+            # If the cluster consists only of one datapoint, set the ccc to zero.
+            # Example shape of this: features_data_C.shape = (2975, 3) features_data_C.shape[0] = 2975
             if features_data_C.shape[0] == 1:
-                # TODO This is subject for calibration! How to penalize clusters with only one subsequence?
                 single_subsequence_in_cluster_value: float = 0.0
                 sccs = np.full(
                     features_data_C.shape[1], single_subsequence_in_cluster_value
@@ -345,14 +360,15 @@ class MT3SCM:
         )
         # Compute adapted silhouette coefficient using cluster centers
         try:
-            self.ascs_pos = silhouette_samples(self.df_centers.values, self.df_centers.index.get_level_values("c_id"))
+            self.ascs_pos = silhouette_samples(
+                self.df_centers.values, self.df_centers.index.get_level_values("c_id")
+            )
             # Compute adapted silhouette coefficient using kappa and tau
-            self.ascs_kt = silhouette_samples(self.df_curve.values, self.df_curve.index.get_level_values("c_id"))
+            self.ascs_kt = silhouette_samples(
+                self.df_curve.values, self.df_curve.index.get_level_values("c_id")
+            )
         except ValueError as error:
-            # print(f"Error: {error}")
-            # import pdb;pdb.set_trace()
-            # self.df_centers.loc[(11, 0, 0, 1), :] = self.df_centers.mean()
-            # self.df_centers.loc[(11, 1, 0, 1), :] = self.df_centers.mean()
+            print(f"silhouette_samples error: {error}. Setting sl and sp to zero!")
             self.ascs_pos = np.zeros(self.df_centers.shape[0])
             self.ascs_kt = np.zeros(self.df_centers.shape[0])
 

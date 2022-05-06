@@ -35,6 +35,7 @@ from tslearn.clustering import TimeSeriesKMeans
 
 # Own Libraries Import
 from mt3scm import MT3SCM
+
 RESOLUTION_DPI = 300
 TRANSPARENT = False
 GRAPHICS_FORMAT = "png"  # or png, pdf, svg

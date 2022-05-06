@@ -16,7 +16,6 @@ import toml
 from mt3scm import __version__, mt3scm_score
 
 
-
 def gen_perfect_data():
     # generate curve 1
     start = (0, 0, 1)
