@@ -95,12 +95,13 @@ def find_subsequence_groups_per_label(label_array: np.ndarray, label: int):
 class MT3SCM:
     def __init__(
         self,
-        eps: float = 1e-8,
+        eps: float = 1e-5,
         include_speed_acceleration: bool = False,
         include_acceleration: bool = True,
         weigh_metrics_on_n_points: bool = True,
         distance_fn: str = "manhatten",
         scale_input_data: bool = False,
+        smooth_input_data: bool = False,
     ) -> None:
         self.eps = eps
         self.cc: float = 0.0
@@ -121,6 +122,8 @@ class MT3SCM:
         self.include_speed_acceleration: bool = include_speed_acceleration
         self.include_acceleration: bool = include_acceleration
         self.scale_input_data: bool = scale_input_data
+        self.smooth_input_data: bool = smooth_input_data
+        self.smooth_window_size: int = 5
         self.distance_fn: str = (
             distance_fn if (distance_fn in ["manhatten", "euclidean"]) else "manhatten"
         )
@@ -129,7 +132,7 @@ class MT3SCM:
 
     @staticmethod
     def compute_curvature(
-        X: np.ndarray, value_limit: float = 1e4, eps: float = 1e-8
+        X: np.ndarray, value_limit: float = 1e4, eps: float = 1e-5
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         gamma1 = derivative_calculation_per_feature(X, eps)
         gamma2 = derivative_calculation_per_feature(gamma1, eps)
@@ -174,7 +177,7 @@ class MT3SCM:
         labels,
         # n_min_subs: int = 3,  # TODO: Remove this and test for seq_len < 0
         standardize_subs_curve: bool = True,
-        edge_offset: int = 3,
+        edge_offset: int = 5,
         max_curve_parameter_value: float = 1e4,
     ):
         """Compute the multivariate time series-subsequence clustering metric (mt3scm) score.
@@ -218,6 +221,10 @@ class MT3SCM:
         n_samples, _ = X.shape
         n_labels = len(le.classes_)
         check_number_of_labels(n_labels, n_samples)
+        if self.smooth_input_data is True:
+            df = pd.DataFrame(X)
+            df = df.rolling(self.smooth_window_size, min_periods=1).mean()
+            X = df.values
         if self.scale_input_data is True:
             scaler = StandardScaler()
             X = scaler.fit_transform(X)

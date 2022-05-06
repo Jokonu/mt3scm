@@ -17,41 +17,63 @@ import pandas as pd
 from matplotlib import cm as cm
 
 
-def analyse(dataset_names:list[str] = ["lorenz", "thomas"], algo_type_names:list[str] = ["Random", "Agglomerative", "TimeSeriesKMeans"]):
-    plt.style.use('plot_style.txt')
+def analyse(
+    dataset_names: list[str] = ["lorenz", "thomas"],
+    algo_type_names: list[str] = ["Random", "Agglomerative", "TimeSeriesKMeans"],
+):
+    plt.style.use("plot_style.txt")
     dfs = []
     full_index_set = set()
     for dataset_name in dataset_names:
         for algo_type_name in algo_type_names:
-            df= pd.read_pickle(f"ClusterMetricComparisonResults{algo_type_name}-{dataset_name}.pkl")
+            df = pd.read_pickle(
+                f"ClusterMetricComparisonResults{algo_type_name}-{dataset_name}.pkl"
+            )
             full_index_set.update(df.index.names)
             fig, ax = plt.subplots()
             df_corr = df.corr()
             A = df_corr.values
-            mask =  np.tri(A.shape[0], k=0)
-            A = np.ma.array(A, mask=np.logical_not(mask)) # mask out the lower triangle
-            cmap = cm.get_cmap("YlGn").copy() # jet doesn't have white color
-            cmap.set_bad('w') # default value is 'k'
-            im, cbar = heatmap(A, df_corr.columns.to_list(), df_corr.columns.to_list(), ax=ax, cmap=cmap, cbarlabel="pearson correlation")
+            mask = np.tri(A.shape[0], k=0)
+            A = np.ma.array(A, mask=np.logical_not(mask))  # mask out the lower triangle
+            cmap = cm.get_cmap("YlGn").copy()  # jet doesn't have white color
+            cmap.set_bad("w")  # default value is 'k'
+            im, cbar = heatmap(
+                A,
+                df_corr.columns.to_list(),
+                df_corr.columns.to_list(),
+                ax=ax,
+                cmap=cmap,
+                cbarlabel="pearson correlation",
+            )
             texts = annotate_heatmap(im, valfmt="{x:.1f}")
             # fig.tight_layout()
-            plt.savefig(f"ClusterMetricsCorrelation-{algo_type_name}-{dataset_name}.png",bbox_inches='tight')
+            plt.savefig(
+                f"ClusterMetricsCorrelation-{algo_type_name}-{dataset_name}.png",
+                bbox_inches="tight",
+            )
             plt.close()
             dfs.append(df.reset_index())
     df_all = pd.concat(dfs, axis=0)
     df_all = df_all.set_index(list(full_index_set)).sort_index()
-    df_all = df_all.rename(columns={"masc-pos":"sl", "masc-kt":"sp"})
+    df_all = df_all.rename(columns={"masc-pos": "sl", "masc-kt": "sp"})
     df_corr = df_all.corr()
     A = df_corr.values
-    mask =  np.tri(A.shape[0], k=0)
-    A = np.ma.array(A, mask=np.logical_not(mask)) # mask out the lower triangle
-    cmap = cm.get_cmap("YlGn").copy() # jet doesn't have white color
-    cmap.set_bad('w') # default value is 'k'
+    mask = np.tri(A.shape[0], k=0)
+    A = np.ma.array(A, mask=np.logical_not(mask))  # mask out the lower triangle
+    cmap = cm.get_cmap("YlGn").copy()  # jet doesn't have white color
+    cmap.set_bad("w")  # default value is 'k'
     fig, ax = plt.subplots()
-    im, cbar = heatmap(A, df_corr.columns.to_list(), df_corr.columns.to_list(), ax=ax, cmap=cmap, cbarlabel="pearson correlation")
+    im, cbar = heatmap(
+        A,
+        df_corr.columns.to_list(),
+        df_corr.columns.to_list(),
+        ax=ax,
+        cmap=cmap,
+        cbarlabel="pearson correlation",
+    )
     texts = annotate_heatmap(im, valfmt="{x:.1f}")
     plt.tight_layout()
-    plt.savefig(f"ClusterMetricsCorrelation.png",bbox_inches='tight')
+    plt.savefig(f"ClusterMetricsCorrelation.png", bbox_inches="tight")
     plt.close()
 
 
@@ -109,7 +131,14 @@ def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **k
     return im, cbar
 
 
-def annotate_heatmap(im, data=None, valfmt="{x:.2f}", textcolors=("black", "white"), threshold=None, **textkw):
+def annotate_heatmap(
+    im,
+    data=None,
+    valfmt="{x:.2f}",
+    textcolors=("black", "white"),
+    threshold=None,
+    **textkw,
+):
     """
     A function to annotate a heatmap.
 
@@ -171,7 +200,9 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-a", "--analyse", dest="analyse", help="analyse", action="store_true")
+    parser.add_argument(
+        "-a", "--analyse", dest="analyse", help="analyse", action="store_true"
+    )
     args = parser.parse_args()
     if args.analyse is True:
         print(f"Analysing the results..")
