@@ -159,6 +159,13 @@ def gen_synth_data():
     X = np.concatenate([X, X+0.00001, X-0.00001])
     labels = np.concatenate([labels1, labels2, labels3, labels4])
     labels = np.concatenate([labels, labels, labels])
+
+    # Repeat the data to have more subsequences per cluster
+    n_repeats = 10
+    X = np.repeat(X, n_repeats, axis=0)
+    labels = np.repeat(labels, n_repeats, axis=0)
+    # Add some randomness to the data.
+    X = np.random.rand(X.shape[0], X.shape[1]) * 0.00001 + X
     return X, labels
 
 
@@ -219,12 +226,11 @@ def generate_random_sequences(length: int = 1000, min_seq_length: int = 10, max_
     return label_array
 
 
-def plot_random_examples(X: np.ndarray, dataset_name: str = ""):
-    n_sequences = [2, 3, 5, 10, 50, 200, 5000]
+def plot_random_examples(X: np.ndarray, dataset_name: str = "", n_clusters:list[int] = [2, 4, 10, 50, 200]):
     min_max_seq_len = [(1, 2), (1, 100), (10, 20), (100, 500)]
     n_x_subfigs = 1
     n_x_subplots = len(min_max_seq_len)
-    n_y_subfigs = len(n_sequences)
+    n_y_subfigs = len(n_clusters)
     n_y_subplots = 1
     alphabet_list = list(string.ascii_lowercase)
     subplot_labels = ["".join(x) for x in itertools.product(alphabet_list, repeat=2)]
@@ -237,34 +243,33 @@ def plot_random_examples(X: np.ndarray, dataset_name: str = ""):
     idx = 0
     result_index_names = ["max_n_sequences", "n_clusters", "min_seq_len", "max_seq_len"]
     df_metrics = pd.DataFrame()
-    for subfig_index, number_of_sequences in enumerate(n_sequences):
+    for subfig_index, n_c in enumerate(n_clusters):
         # Create subplots for all linkage variations
         axs = subfigs[subfig_index].subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), squeeze=True)
-        subfigs[subfig_index].suptitle(f"Number of clusters: {number_of_sequences}")
+        subfigs[subfig_index].suptitle(f"Number of clusters: {n_c}")
         for subplots_index, (min_seq_len, max_seq_len) in enumerate(min_max_seq_len):
             # Generate random label sequences
-            label_array = generate_random_sequences(length=X.shape[0], min_seq_length=min_seq_len, max_seq_length=max_seq_len, number_of_sequences=number_of_sequences)
+            label_array = generate_random_sequences(length=X.shape[0], min_seq_length=min_seq_len, max_seq_length=max_seq_len, number_of_sequences=n_c)
             metrics, kappa_X, tau_X = calc_unsupervised_metrics(X, label_array)
             # create and collect the results in a dataframe for further analysis
-            n_clusters = len(np.unique(label_array))
-            res_df = create_results_dataframe_from_dict(metrics, index=[[number_of_sequences], [n_clusters],  [min_seq_len], [max_seq_len]], index_names=result_index_names)
+            res_df = create_results_dataframe_from_dict(metrics, index=[[n_c], [n_c],  [min_seq_len], [max_seq_len]], index_names=result_index_names)
             df_metrics = pd.concat([res_df, df_metrics], axis=0, verify_integrity=True, names=result_index_names)
-            subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}}, n_clusters={n_clusters}, min={min_seq_len}, max={max_seq_len}, \n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, sl={metrics['masc-pos']:.3f}, sp={metrics['masc-kt']:.3f},\nsilhouette={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
+            subtitle = f"\\textbf{{Subfig. {subplot_labels[idx]}:}}, n_clusters={n_c}, min={min_seq_len}, max={max_seq_len}, \n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, sl={metrics['masc-pos']:.3f}, sp={metrics['masc-kt']:.3f},\nsilhouette={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
             # Scatter plot
-            # marker_sizes = np.log(kappa_X * tau_X * 100 + 1) * 5
             marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
-            print(f"Drawing random example {number_of_sequences=} {min_seq_len=} {max_seq_len=}")
+            print(f"Drawing random example {n_c=} {min_seq_len=} {max_seq_len=}")
             ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], axs[subplots_index], labels=label_array, subplot_title=subtitle, marker_size_array=marker_sizes)
-            single_fig = plt.figure(2, constrained_layout=False, figsize=(4, 4))
-            ax = single_fig.add_subplot(projection="3d", computed_zorder=False)
-            subtitle = f"n_clusters={n_clusters}, min={min_seq_len}, max={max_seq_len}, \\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, sl={metrics['masc-pos']:.3f}, sp={metrics['masc-kt']:.3f},\nsilhouette={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
-            ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], ax, labels=label_array, subplot_title=subtitle, marker_size_array=marker_sizes)
-            plt.figure(2)
+            # single_fig = plt.figure(2, constrained_layout=False, figsize=(4, 4))
+            # ax = single_fig.add_subplot(projection="3d", computed_zorder=False)
+            subtitle = f"n_clusters={n_c}, min={min_seq_len}, max={max_seq_len}, \\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, sl={metrics['masc-pos']:.3f}, sp={metrics['masc-kt']:.3f},\nsilhouette={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
+            # ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], ax, labels=label_array, subplot_title=subtitle, marker_size_array=marker_sizes)
+            # plt.figure(2)
             plot_name = f"ClusterMetricComparisonRandom-{dataset_name}-{subplot_labels[idx]}.{GRAPHICS_FORMAT}"
-            subplot_path = Path().cwd() / "plots"
-            Path(subplot_path).mkdir(parents=True, exist_ok=True)
-            plt.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
-            plt.close(2)
+            # subplot_path = Path().cwd() / "plots"
+            # Path(subplot_path).mkdir(parents=True, exist_ok=True)
+            # plt.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
+            # plt.close(2)
+            plot_single_figure(X, labels=label_array, subtitle=subtitle, plot_name=plot_name, marker_sizes=marker_sizes)
             idx += 1
     plot_name = f"ClusterMetricComparisonRandom-{dataset_name}.png"
     print(f"Saving plot with name: {plot_name}")
@@ -275,6 +280,15 @@ def plot_random_examples(X: np.ndarray, dataset_name: str = ""):
     df_metrics.to_pickle(f"ClusterMetricComparisonResultsRandom-{dataset_name}.pkl")
     # df_metrics.to_csv(f"ClusterMetricComparisonResultsRandom-{dataset_name}.csv")
 
+def plot_single_figure(X:np.ndarray, labels:np.ndarray, subtitle:str, plot_name:str, marker_sizes:np.ndarray):
+    single_fig = plt.figure(2, constrained_layout=False, figsize=(4, 4))
+    ax = single_fig.add_subplot(projection="3d", computed_zorder=False)
+    ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], ax, labels=labels, subplot_title=subtitle, marker_size_array=marker_sizes)
+    plt.figure(2)
+    subplot_path = Path().cwd() / "plots"
+    Path(subplot_path).mkdir(parents=True, exist_ok=True)
+    plt.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
+    plt.close(2)
 
 def plot_agglomerative_clustering_example(X: np.ndarray, dataset_name: str = "", n_clusters:list[int] = [2, 3, 5, 10, 100, 1000], connect:list = [False], linkage_list:list[str] = ["average", "complete", "ward", "single"]) -> None:
     if connect[0] is False:
@@ -312,16 +326,17 @@ def plot_agglomerative_clustering_example(X: np.ndarray, dataset_name: str = "",
                 marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
                 print(f"Drawing agglomerative example connectivity={connectivity is not None} {n_c=} {linkage=}")
                 ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], axs[0][subplots_index], labels=model.labels_, subplot_title=subtitle, marker_size_array=marker_sizes)
-                single_fig = plt.figure(2, constrained_layout=False, figsize=(4, 4))
-                ax = single_fig.add_subplot(projection="3d", computed_zorder=False)
-                subtitle = f"n_clusters={n_clusters}, {linkage=}, connectivity={connectivity is not None}, \\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, sl={metrics['masc-pos']:.3f}, sp={metrics['masc-kt']:.3f},\nsilhouette={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
-                ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], ax, labels=model.labels_, subplot_title=subtitle, marker_size_array=marker_sizes)
-                plt.figure(2)
+                # single_fig = plt.figure(2, constrained_layout=False, figsize=(4, 4))
+                # ax = single_fig.add_subplot(projection="3d", computed_zorder=False)
+                subtitle = f"n_clusters={n_c}, {linkage=}, connectivity={connectivity is not None}, \\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, sl={metrics['masc-pos']:.3f}, sp={metrics['masc-kt']:.3f},\nsilhouette={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
+                # ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], ax, labels=model.labels_, subplot_title=subtitle, marker_size_array=marker_sizes)
+                # plt.figure(2)
                 plot_name = f"ClusterMetricComparisonAgglomerative-{dataset_name}-{subplot_labels[idx]}.{GRAPHICS_FORMAT}"
-                subplot_path = Path().cwd() / "plots"
-                Path(subplot_path).mkdir(parents=True, exist_ok=True)
-                plt.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
-                plt.close(2)
+                # subplot_path = Path().cwd() / "plots"
+                # Path(subplot_path).mkdir(parents=True, exist_ok=True)
+                # plt.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
+                # plt.close(2)
+                plot_single_figure(X, labels=model.labels_, subtitle=subtitle, plot_name=plot_name, marker_sizes=marker_sizes)
                 idx += 1
             subfig_index += 1
     plot_name = f"ClusterMetricComparisonAgglomerative-{dataset_name}.png"
@@ -342,7 +357,6 @@ def plot_kmeans_example(X: np.ndarray, dataset_name: str = "", n_clusters:list[i
     fig.suptitle(r"\textbf{'Multivariate Time Series Sub-Sequence Clustering Metric' (MT3SCM) Evaluation}")
     # Create subfigures for connectivity and number of clusters
     subfigs = fig.subfigures(n_subfigs, 1, squeeze=False)
-    subfig_index = 0
     # Subplots caption alphabet list
     alphabet_list = list(string.ascii_lowercase)
     subplot_labels = ["".join(x) for x in itertools.product(alphabet_list, repeat=2)]
@@ -351,13 +365,11 @@ def plot_kmeans_example(X: np.ndarray, dataset_name: str = "", n_clusters:list[i
     # Counter
     idx = 0
     # Iterate over connectivity and number of clusters
-    for n_c in n_clusters:
+    for subfig_index, n_c in enumerate(n_clusters):
         # Create subplots for all linkage variations
         axs = subfigs[subfig_index][0].subplots(1, n_subplots, subplot_kw=dict(projection="3d"), squeeze=False)
         subfigs[subfig_index][0].suptitle(f"n_clusters = {n_c}")
         for subplots_index, method in enumerate(methods):
-            # model = AgglomerativeClustering(linkage=linkage, n_clusters=n_c)
-            # model.fit(X)
             X_scaled = StandardScaler().fit_transform(X)
             model = TimeSeriesKMeans(n_clusters=n_c, metric=method, max_iter=5, random_state=42, n_jobs=-1).fit(X_scaled)
             metrics, kappa_X, tau_X = calc_unsupervised_metrics(X, model.labels_)
@@ -369,8 +381,10 @@ def plot_kmeans_example(X: np.ndarray, dataset_name: str = "", n_clusters:list[i
             marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
             print(f"Drawing TimeSeriesKMeans example connectivity={method=} {n_c=}")
             ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], axs[0][subplots_index], labels=model.labels_, subplot_title=subtitle, marker_size_array=marker_sizes)
+            subtitle = f"{method=}, \\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, masc-pos={metrics['masc-pos']:.3f}, masc-kt={metrics['masc-kt']:.3f},\nsil={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
+            plot_name = f"ClusterMetricComparisonTimeSeriesKMeans-{dataset_name}-{subplot_labels[idx]}.{GRAPHICS_FORMAT}"
+            plot_single_figure(X, labels=model.labels_, subtitle=subtitle, plot_name=plot_name, marker_sizes=marker_sizes)
             idx += 1
-        subfig_index += 1
     plot_name = f"ClusterMetricComparisonTimeSeriesKMeans-{dataset_name}.png"
     print(f"Saving plot with name: {plot_name}")
     plt.savefig(plot_name, dpi=300)
@@ -399,10 +413,11 @@ def plot_examples():
     X_synth, labels_synth = gen_synth_data()
     # datasets = {"lorenz": df_lorenz.values, "thomas": df_thomas.values, "synthetic": X_synth}
     datasets = {"synthetic": X_synth}
+    n_clusters = [2, 4, 10, 50, 200]
     for name, data in datasets.items():
-        plot_agglomerative_clustering_example(data, dataset_name=name)
-        # plot_random_examples(data, dataset_name=name)
-        plot_kmeans_example(data, dataset_name=name)
+        plot_agglomerative_clustering_example(data, dataset_name=name, n_clusters=n_clusters)
+        plot_random_examples(data, dataset_name=name, n_clusters=n_clusters)
+        plot_kmeans_example(data, dataset_name=name, n_clusters=n_clusters)
 
 
 def plot_one_example():
