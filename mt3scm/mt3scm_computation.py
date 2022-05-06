@@ -15,7 +15,7 @@ from sklearn.utils import check_X_y
 def mt3scm_score(
     X,
     labels,
-    n_min_subs: int = 3,
+    # n_min_subs: int = 3,
     standardize_subs_curve: bool = True,
     edge_offset: int = 1,
 ):
@@ -23,7 +23,7 @@ def mt3scm_score(
     return cm.mt3scm_score(
         X,
         labels,
-        n_min_subs=n_min_subs,
+        # n_min_subs=n_min_subs,
         standardize_subs_curve=standardize_subs_curve,
         edge_offset=edge_offset,
     )
@@ -172,7 +172,7 @@ class MT3SCM:
         self,
         X,
         labels,
-        n_min_subs: int = 3,
+        # n_min_subs: int = 3,  # TODO: Remove this and test for seq_len < 0
         standardize_subs_curve: bool = True,
         edge_offset: int = 3,
         max_curve_parameter_value: float = 1e4,
@@ -200,9 +200,6 @@ class MT3SCM:
 
         labels : array-like of shape (n_samples,)
             Predicted labels for each sample.
-
-        n_min_subs : int, default=3
-            Is the minimal number of consecutive points in a the same subsequence provided by the label array when computing the mt3scm score. This needs to be at least 3 for calculating a reasonable gradient when computing the curvature of the subsequence. Subsequence with consecutive points smaller than n_min_subs get a kappa and tau of 0 but curvature consistency coefficient of 1
 
         Returns
         -------
