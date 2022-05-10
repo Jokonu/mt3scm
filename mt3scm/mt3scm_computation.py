@@ -175,9 +175,9 @@ class MT3SCM:
         self,
         X,
         labels,
-        # n_min_subs: int = 3,  # TODO: Remove this and test for seq_len < 0
+        n_min_subs: int = 2,  # TODO: Remove this and test for seq_len < 0
         standardize_subs_curve: bool = True,
-        edge_offset: int = 5,
+        edge_offset: int = 1,
         max_curve_parameter_value: float = 1e4,
     ):
         """Compute the multivariate time series-subsequence clustering metric (mt3scm) score.
@@ -280,8 +280,16 @@ class MT3SCM:
                 idx_start = row[0] + edge_offset
                 idx_end = row[1] + 1 - edge_offset
                 seq_len = idx_end - idx_start
-                # Get the data of this subsequence
-                subs_data = X[idx_start:idx_end]
+                # If edge_offset produces a too low seq_len, then the edge_offset is ignored!
+                if seq_len >= n_min_subs:
+                    # Get the data of this subsequence
+                    subs_data = X[idx_start:idx_end]
+                else:
+                    print(f"Warning: {seq_len=} too low. Set edge_offset to lower value and/or n_min_subs to lower value as well.\nseq_len >= n_min_subs is being irgnored!")
+                    idx_start = row[0]
+                    idx_end = row[1] + 1
+                    seq_len = idx_end - idx_start
+                    subs_data = X[idx_start:idx_end]
                 if self.scale_input_data is False:
                     # Normalize subsequence data with min max of all data
                     norm_subs_data = (subs_data - data_min) / (data_max - data_min)
@@ -289,9 +297,7 @@ class MT3SCM:
                 else:
                     # Calculate standard deviation for the normalized subsequence data
                     std_pos = subs_data.std(axis=0).mean()
-                # std_pos = subs_data.std(axis=0).mean()
                 # Get the center position as the middle of the subsequence
-                # Should this be the normalized data position?? If full data is already normalized then no!
                 center_pos = np.take(subs_data, subs_data.shape[0] // 2, axis=0)
                 subs_center_data.append(
                     [int(cluster_id), int(subsequence_id), std_pos, seq_len]
