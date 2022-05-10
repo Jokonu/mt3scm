@@ -90,7 +90,7 @@ def gen_synth_data():
     # generate curve 1
     start = (0, 0, 1)
     end = (3 * np.pi, 0, -1)
-    n_points = 150
+    n_points = 50
     t = np.linspace(start=start[0], stop=end[0], num=n_points)
     xt = t
     yt = np.sin(t)
@@ -101,7 +101,7 @@ def gen_synth_data():
     # generate passing from curve 1 to 2
     start = (3 * np.pi, -0.5, -1)
     end = (3 * np.pi, -1.88, -1)
-    n_points = 45
+    n_points = 15
     t = np.linspace(start=-start[1], stop=-end[1], num=n_points)
     t = t**2 / 2
     # t = np.geomspace(0.674, 100.0, num=1000)
@@ -114,7 +114,7 @@ def gen_synth_data():
     # generate curve2 from passing 1
     start = (3.5 * np.pi, -2, -1)
     end = (0.5 * np.pi, 2, 1)
-    n_points = 240
+    n_points = 300
     t = np.linspace(start=start[0], stop=end[0], num=n_points)
     # t2 = np.linspace(start=3*np.pi, stop=0, num=n_points)
     xt = np.linspace(start=3 * np.pi, stop=0, num=n_points)
@@ -128,7 +128,7 @@ def gen_synth_data():
     # generate passing from curve 2 to 1
     start = (0, -2, 1)
     end = (0, 0.01, -1)
-    n_points = 50
+    n_points = 80
     t = np.linspace(start=0.35, stop=1.9, num=n_points)
     t = t**2 / 2
     # t = np.geomspace(0.674, 100.0, num=1000)

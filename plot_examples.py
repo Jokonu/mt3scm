@@ -357,7 +357,7 @@ def create_results_dataframe_from_dict(
     return df
 
 
-def plot_examples():
+def plot_examples(algorithms: list[str] = ["agglomerative", "random", "kmeans"]):
     # Set style with seaborn
     sns.set_style("whitegrid")
     plt.rcParams.update(
@@ -374,15 +374,18 @@ def plot_examples():
     df_thomas = helpers.generate_thomas_attractor_data(dt=0.05, num_steps=10000, b=0.1)
     # Get Synthetic dataset
     X_synth, labels_synth = helpers.gen_synth_data()
-    # datasets = {"lorenz": df_lorenz.values, "thomas": df_thomas.values, "synthetic": X_synth}
-    datasets = {"synthetic": X_synth}
+    datasets = {"lorenz": df_lorenz.values, "thomas": df_thomas.values, "synthetic": X_synth}
+    # datasets = {"synthetic": X_synth}
     n_clusters = [2, 4, 10, 50, 200]
     for name, data in datasets.items():
-        plot_agglomerative_clustering_example(
-            data, dataset_name=name, n_clusters=n_clusters
-        )
-        plot_random_examples(data, dataset_name=name, n_clusters=n_clusters)
-        plot_kmeans_example(data, dataset_name=name, n_clusters=n_clusters)
+        if "aglomerative" in algorithms:
+            plot_agglomerative_clustering_example(
+                data, dataset_name=name, n_clusters=n_clusters
+            )
+        if "random" in algorithms:
+            plot_random_examples(data, dataset_name=name, n_clusters=n_clusters)
+        if "kmeans" in algorithms:
+            plot_kmeans_example(data, dataset_name=name, n_clusters=n_clusters)
 
 
 def plot_one_example():
@@ -508,7 +511,7 @@ if __name__ == "__main__":
         plot_curvature_torsion_example()
     elif args.kmeans is True:
         print(f"Plotting curvature torsion example..")
-        plot_kmeans_example()
+        plot_examples(algorithms=["kmeans"])
     else:
         print(f"Plotting all examples..")
         plot_examples()

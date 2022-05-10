@@ -18,10 +18,23 @@ from matplotlib import cm as cm
 
 
 def analyse(
-    dataset_names: list[str] = ["lorenz", "thomas"],
+    dataset_names: list[str] = ["lorenz", "thomas", "synthetic"],
     algo_type_names: list[str] = ["Random", "Agglomerative", "TimeSeriesKMeans"],
 ):
     plt.style.use("plot_style.txt")
+    plt.rcParams.update(
+        {
+            "text.usetex": True,
+            "font.family": "serif",
+            "font.sans-serif": ["Computer Modern Roman"],
+            "axes.grid": False,
+            "xtick.labelsize": 16,
+            "ytick.labelsize": 16,
+            "font.size": 16,
+            "axes.titlesize" : 16,
+            "axes.labelsize" : 16,
+        }
+    )
     dfs = []
     full_index_set = set()
     for dataset_name in dataset_names:
@@ -31,6 +44,7 @@ def analyse(
             )
             full_index_set.update(df.index.names)
             fig, ax = plt.subplots()
+            df = df[["mt3scm", "cc", "wcc", "sl", "sp", "silhouette", "davies", "calinski"]]
             df_corr = df.corr()
             A = df_corr.values
             mask = np.tri(A.shape[0], k=0)
@@ -55,7 +69,9 @@ def analyse(
             dfs.append(df.reset_index())
     df_all = pd.concat(dfs, axis=0)
     df_all = df_all.set_index(list(full_index_set)).sort_index()
-    df_all = df_all.rename(columns={"masc-pos": "sl", "masc-kt": "sp"})
+    # import pdb;pdb.set_trace()
+    # df_all = df_all.rename(columns={"masc-pos": "sl", "masc-kt": "sp"})
+    df_all = df_all[["mt3scm", "cc", "wcc", "sl", "sp", "silhouette", "davies", "calinski"]]
     df_corr = df_all.corr()
     A = df_corr.values
     mask = np.tri(A.shape[0], k=0)
