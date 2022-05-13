@@ -18,7 +18,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from matplotlib import cm
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.neighbors import kneighbors_graph
@@ -44,14 +43,7 @@ def plot_random_examples(
     n_y_subplots = 1
     alphabet_list = list(string.ascii_lowercase)
     subplot_labels = ["".join(x) for x in itertools.product(alphabet_list, repeat=2)]
-    plt.rcParams.update(
-        {
-            "text.usetex": True,
-            "font.family": "serif",
-            "font.sans-serif": ["Computer Modern Roman"],
-            "axes.grid": False,
-        }
-    )
+    helpers.set_plot_params()
     fig = plt.figure(
         1, constrained_layout=True, figsize=(4 * n_x_subplots, 4 * n_y_subfigs)
     )
@@ -169,6 +161,7 @@ def plot_agglomerative_clustering_example(
     if connect[0] is False:
         connect = [None, kneighbors_graph(X, 30, include_self=False, n_jobs=20)]
     n_subfigs = len(n_clusters) * len(connect)
+    helpers.set_plot_params()
     fig = plt.figure(
         constrained_layout=True, figsize=(4 * len(linkage_list), 4 * n_subfigs)
     )
@@ -232,16 +225,8 @@ def plot_agglomerative_clustering_example(
                     subplot_title=subtitle,
                     marker_size_array=marker_sizes,
                 )
-                # single_fig = plt.figure(2, constrained_layout=False, figsize=(4, 4))
-                # ax = single_fig.add_subplot(projection="3d", computed_zorder=False)
-                subtitle = f"n_clusters={n_c}, {linkage=}, connectivity={connectivity is not None}, \\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, sl={metrics['sl']:.3f}, sp={metrics['sp']:.3f},\nsilhouette={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
-                # ax_scatter_3d(X[:, 0], X[:, 1], X[:, 2], ax, labels=model.labels_, subplot_title=subtitle, marker_size_array=marker_sizes)
-                # plt.figure(2)
+                subtitle = f"n_clusters={n_c}, {linkage=}, connectivity={connectivity is not None}, \n\\textbf{{mt3scm={metrics['mt3scm']:.3f}}},\ncc={metrics['cc']:.3f}, wcc={metrics['wcc']:.3f}, sl={metrics['sl']:.3f}, sp={metrics['sp']:.3f},\nsilhouette={metrics['silhouette']:.3f}, calinski={metrics['calinski']:.1f}, davies={metrics['davies']:.3f}"
                 plot_name = f"ClusterMetricComparisonAgglomerative-{dataset_name}-{subplot_labels[idx]}.{GRAPHICS_FORMAT}"
-                # subplot_path = Path().cwd() / "plots"
-                # Path(subplot_path).mkdir(parents=True, exist_ok=True)
-                # plt.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
-                # plt.close(2)
                 plot_single_figure(
                     X,
                     labels=model.labels_,
@@ -271,6 +256,7 @@ def plot_kmeans_example(
 ) -> None:
     n_subfigs = len(n_clusters)
     n_subplots = len(methods)
+    helpers.set_plot_params()
     fig = plt.figure(constrained_layout=True, figsize=(4 * n_subplots, 4 * n_subfigs))
     # Setting global title
     fig.suptitle(
@@ -335,8 +321,9 @@ def plot_kmeans_example(
             idx += 1
     plot_name = f"ClusterMetricComparisonTimeSeriesKMeans-{dataset_name}.png"
     print(f"Saving plot with name: {plot_name}")
+    plt.figure(1)
     plt.savefig(plot_name, dpi=300)
-    plt.close()
+    plt.close(1)
     # Save resulting dataframe
     df_metrics.to_pickle(
         f"ClusterMetricComparisonResultsTimeSeriesKMeans-{dataset_name}.pkl"
@@ -358,16 +345,6 @@ def create_results_dataframe_from_dict(
 
 
 def plot_examples(algorithms: list[str] = ["agglomerative", "random", "kmeans"]):
-    # Set style with seaborn
-    sns.set_style("whitegrid")
-    plt.rcParams.update(
-        {
-            "text.usetex": True,
-            "font.family": "sans-serif",
-            "font.sans-serif": ["Computer Modern Serif"],
-            "axes.grid": False,
-        }
-    )
     # Get lorenz attractor data as dataframe
     df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001)
     # Get thomas attractor data as dataframe
@@ -389,16 +366,6 @@ def plot_examples(algorithms: list[str] = ["agglomerative", "random", "kmeans"])
 
 
 def plot_one_example():
-    # Set style with seaborn
-    sns.set_style("whitegrid")
-    plt.rcParams.update(
-        {
-            "text.usetex": True,
-            "font.family": "sans-serif",
-            "font.sans-serif": ["Computer Modern Serif"],
-            "axes.grid": False,
-        }
-    )
     # Get lorenz attractor data as dataframe
     df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001)
     X_lorenz = StandardScaler().fit_transform(df_lorenz.values)
@@ -418,14 +385,7 @@ def plot_one_example():
 
 
 def plot_curvature_torsion_example():
-    plt.rcParams.update(
-        {
-            "text.usetex": True,
-            "font.family": "sans-serif",
-            "font.sans-serif": ["Computer Modern Serif"],
-            "axes.grid": False,
-        }
-    )
+    helpers.set_plot_params()
     # Get thomas attractor data as dataframe
     df_thomas = helpers.generate_thomas_attractor_data(dt=0.05, num_steps=500, b=0.1)
     X_thomas = StandardScaler().fit_transform(df_thomas.values)
@@ -473,6 +433,35 @@ def plot_curvature_torsion_example():
         clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.1)
         clb.set_ticks([color.min(), color.max() / 2, color.max()])
         clb.set_ticklabels(["Low", "Medium", "High"])
+        # subtitle = f""
+        plot_name = f"ClusterMetricCurvatureTorsionExample-{name}.{GRAPHICS_FORMAT}"
+        single_fig = plt.figure(2, constrained_layout=False, figsize=(4, 4))
+        ax2 = single_fig.add_subplot(projection="3d", computed_zorder=False)
+        scat = ax2.scatter(
+            X_thomas[:, 0],
+            X_thomas[:, 1],
+            X_thomas[:, 2],
+            c=color,
+            cmap=cmap,
+            s=color,
+            marker=marker,
+        )
+        # ax2.set_title(subtitle)
+        clb = single_fig.colorbar(scat, ax=ax2, shrink=0.5, pad=0.1)
+        clb.set_ticks([color.min(), color.max() / 2, color.max()])
+        clb.set_ticklabels(["Low", "Medium", "High"])
+        plt.figure(2)
+        subplot_path = Path().cwd() / "plots"
+        Path(subplot_path).mkdir(parents=True, exist_ok=True)
+        plt.savefig(
+            subplot_path / plot_name,
+            pad_inches=0,
+            bbox_inches="tight",
+            transparent=TRANSPARENT,
+            dpi=RESOLUTION_DPI,
+            format=GRAPHICS_FORMAT,
+        )
+        plt.close(2)
         # clb.ax.set_title(name, fontsize=10)
     plot_name = f"ClusterMetricCurvatureTorsionExample.png"
     print(f"Saving plot with name: {plot_name}")

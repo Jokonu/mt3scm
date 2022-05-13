@@ -108,6 +108,7 @@ class MT3SCM:
         self.wcc: float = 0.0
         self.masc_pos: float = 0.0
         self.masc_kt: float = 0.0
+        self.spa: float = 0.0
         self.masc: float = 0.0
         self.metric: float = 0.0
         self.cccs: list = []
@@ -368,19 +369,23 @@ class MT3SCM:
             ),
             columns=[f"x{i}" for i in range(cluster_center_data[:, 4:].shape[1])],
         )
-        # Compute adapted silhouette coefficient using cluster centers
+        # Compute adapted mean silhouette coefficient using cluster centers
         try:
             self.ascs_pos = silhouette_samples(
                 self.df_centers.values, self.df_centers.index.get_level_values("c_id")
             )
-            # Compute adapted silhouette coefficient using kappa and tau
+            # Compute adapted mean silhouette coefficient using kappa and tau
             self.ascs_kt = silhouette_samples(
                 self.df_curve.values, self.df_curve.index.get_level_values("c_id")
             )
+            # Compute silhouette coefficient using kappa and tau
+            curve_params_data = np.array([self.kappa_X, self.tau_X, self.acceleration_X]).T
+            self.spa = np.mean(silhouette_samples(curve_params_data, labels))
         except ValueError as error:
             print(f"silhouette_samples error: {error}. Setting sl and sp to zero!")
             self.ascs_pos = np.zeros(self.df_centers.shape[0])
             self.ascs_kt = np.zeros(self.df_centers.shape[0])
+            self.spa = 0.0
 
         # Calculate the mean cluster curvature consistency by weighing with the number of datapoints per cluster:
         # wcc = \sum_{}

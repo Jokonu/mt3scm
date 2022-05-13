@@ -5,10 +5,12 @@
 
 # Standard Libraries Import
 from pathlib import Path
+import logging
 
 # Third Party Libraries Import
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
 import pandas as pd
 from matplotlib import cm
 from matplotlib.colors import Normalize
@@ -21,6 +23,43 @@ from sklearn.metrics import (
 # Own Libraries Import
 from mt3scm import MT3SCM
 
+
+def setupLogger(logging_file_path: Path = None, name: str = "jizzle", loglevel="INFO", log_to_file: bool = False):
+    if loglevel is None:
+        loglevel = "INFO"
+    if logging_file_path is None:
+        logging_file_path = Path.cwd() / "logs"
+        logging_file_name = logging_file_path / "logger.log"
+        Path(logging_file_path).mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger(name)
+    logger.setLevel(loglevel)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(loglevel)
+    # create formatter and add it to the handlers
+    fmt = "%(asctime)s - %(name)s %(levelname)s %(funcName)s: %(message)s"
+    if log_to_file is True:
+        # create file handler which logs warning messages
+        fh = logging.FileHandler(logging_file_name)
+        fh.setLevel(loglevel)
+        fh.setFormatter(logging.Formatter(fmt))
+        logger.addHandler(fh)
+    ch.setFormatter(logging.Formatter(fmt))
+    logger.addHandler(ch)
+    # coloredlogs.install(level=loglevel, logger=logger, fmt=fmt)
+    return logger
+
+def set_plot_params():
+    sns.set_style("whitegrid")
+    plt.rcParams.update(
+        {
+            "text.usetex": True,
+            "font.family": "serif",
+            "font.sans-serif": ["Computer Modern Roman"],
+            "axes.grid": False,
+            "image.cmap": cm.get_cmap("viridis")
+        }
+    )
 
 def ax_scatter_3d(
     X,
@@ -55,9 +94,7 @@ def ax_scatter_3d(
     n_unique_labels = len(np.unique(labels))
     cmap = cm.get_cmap("viridis", n_unique_labels)
     norm = Normalize(vmin=0, vmax=n_unique_labels, clip=False)
-    scat = ax.scatter(
-        X, Y, Z, c=labels, cmap=cmap, s=marker_size, marker=marker, norm=norm
-    )
+    scat = ax.scatter(X, Y, Z, c=labels, cmap=cmap, s=marker_size, marker=marker, norm=norm)
     fig = plt.gcf()
     clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.2)
     clb.ax.set_title("Cluster ID", fontsize=10)
@@ -142,6 +179,7 @@ def gen_synth_data():
 
     X = np.concatenate([X1, X2, X3, X4])
     X = np.concatenate([X, X + 0.00001, X - 0.00001])
+    # X = np.concatenate([X, X, X])
     labels = np.concatenate([labels1, labels2, labels3, labels4])
     labels = np.concatenate([labels, labels, labels])
 
@@ -169,9 +207,7 @@ def gen_synth_data():
     return X, labels
 
 
-def generate_thomas_attractor_data(
-    dt: float = 1, num_steps: int = 2000, b: float = 0.1615
-):
+def generate_thomas_attractor_data(dt: float = 1, num_steps: int = 2000, b: float = 0.1615):
     def thomas(x, y, z, b=0.1998):
         x_dot = np.sin(y) - (b * x)
         y_dot = np.sin(z) - (b * y)
@@ -255,3 +291,121 @@ def generate_random_sequences(
     if n_unique_labels == 1:
         label_array[-1] = 1
     return label_array
+
+
+def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **kwargs):
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Parameters
+    ----------
+    data
+        A 2D numpy array of shape (M, N).
+    row_labels
+        A list or array of length M with the labels for the rows.
+    col_labels
+        A list or array of length N with the labels for the columns.
+    ax
+        A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
+        not provided, use current axes or create a new one.  Optional.
+    cbar_kw
+        A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
+    cbarlabel
+        The label for the colorbar.  Optional.
+    **kwargs
+        All other arguments are forwarded to `imshow`.
+    """
+
+    if not ax:
+        ax = plt.gca()
+
+    # Plot the heatmap
+    im = ax.imshow(data, **kwargs)
+
+    # Create colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+    # Show all ticks and label them with the respective list entries.
+    ax.set_xticks(np.arange(data.shape[1]), labels=col_labels)
+    ax.set_yticks(np.arange(data.shape[0]), labels=row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right", rotation_mode="anchor")
+
+    # Turn spines off and create white grid.
+    ax.spines[:].set_visible(False)
+
+    ax.set_xticks(np.arange(data.shape[1] + 1) - 0.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0] + 1) - 0.5, minor=True)
+    ax.grid(which="minor", color="w", linestyle="-", linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    return im, cbar
+
+
+def annotate_heatmap(
+    im,
+    data=None,
+    valfmt="{x:.2f}",
+    textcolors=("black", "white"),
+    threshold=None,
+    **textkw,
+):
+    """
+    A function to annotate a heatmap.
+
+    Parameters
+    ----------
+    im
+        The AxesImage to be labeled.
+    data
+        Data used to annotate.  If None, the image's data is used.  Optional.
+    valfmt
+        The format of the annotations inside the heatmap.  This should either
+        use the string format method, e.g. "$ {x:.2f}", or be a
+        `matplotlib.ticker.Formatter`.  Optional.
+    textcolors
+        A pair of colors.  The first is used for values below a threshold,
+        the second for those above.  Optional.
+    threshold
+        Value in data units according to which the colors from textcolors are
+        applied.  If None (the default) uses the middle of the colormap as
+        separation.  Optional.
+    **kwargs
+        All other arguments are forwarded to each call to `text` used to create
+        the text labels.
+    """
+
+    if not isinstance(data, (list, np.ndarray)):
+        data = im.get_array()
+
+    # Normalize the threshold to the images color range.
+    if threshold is not None:
+        threshold = im.norm(threshold)
+    else:
+        threshold = im.norm(data.max()) / 2.0
+
+    # Set default alignment to center, but allow it to be
+    # overwritten by textkw.
+    kw = dict(horizontalalignment="center", verticalalignment="center")
+    kw.update(textkw)
+
+    # Get the formatter in case a string is supplied
+    if isinstance(valfmt, str):
+        valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+
+    # Loop over the data and create a `Text` for each "pixel".
+    # Change the text's color depending on the data.
+    texts = []
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            if not isinstance(data[i, j], np.ma.core.MaskedConstant):
+                kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold)])
+                text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+                texts.append(text)
+
+    return texts
