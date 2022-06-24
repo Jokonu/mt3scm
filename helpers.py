@@ -4,14 +4,14 @@
 # License: BSD 3 clause
 
 # Standard Libraries Import
-from pathlib import Path
 import logging
+from pathlib import Path
 
 # Third Party Libraries Import
 import matplotlib.pyplot as plt
 import numpy as np
-import seaborn as sns
 import pandas as pd
+import seaborn as sns
 from matplotlib import cm
 from matplotlib.colors import Normalize
 from sklearn.metrics import (

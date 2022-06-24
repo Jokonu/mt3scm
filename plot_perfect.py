@@ -67,8 +67,11 @@ def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_n
     plt.close()
 
 def plot_agglomerative_lorenz_on_new_feature_space():
+    # Third Party Libraries Import
+    from sklearn.cluster import DBSCAN, OPTICS, AgglomerativeClustering
+
+    # Own Libraries Import
     import helpers
-    from sklearn.cluster import OPTICS, DBSCAN, AgglomerativeClustering
     df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001)
     X = df_lorenz.values
     mt3 = MT3SCM()
@@ -92,8 +95,11 @@ def plot_agglomerative_lorenz_on_new_feature_space():
     print(subplot_title)
 
 def plot_agglomerative_own_synth_on_new_feature_space():
+    # Third Party Libraries Import
+    from sklearn.cluster import DBSCAN, OPTICS, AgglomerativeClustering
+
+    # Own Libraries Import
     import helpers
-    from sklearn.cluster import OPTICS, DBSCAN, AgglomerativeClustering
     df = helpers.gen_curve_synth_data()
 
     X = df.values

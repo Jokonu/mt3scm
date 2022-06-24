@@ -9,18 +9,18 @@ This python script analysis the results from the examples
 # Authors: Jonas Köhne
 # License: BSD 3 clause
 
+# Standard Libraries Import
 from pathlib import Path
 
 # Third Party Libraries Import
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib import cm as cm
 import seaborn as sns
+from matplotlib import cm as cm
 
 # Own Libraries Import
 import helpers
-
 
 RESOLUTION_DPI = 300
 TRANSPARENT = False

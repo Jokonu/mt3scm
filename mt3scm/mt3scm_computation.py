@@ -378,9 +378,24 @@ class MT3SCM:
                 columns=[f"x{i}" for i in range(cluster_center_data[:, 2:].shape[1])],
             )
         elif self.include_std_num_points is True:
-            self.df_curve = pd.DataFrame(cluster_curve_data[:, 2:], index=pd.MultiIndex.from_arrays(cluster_curve_data[:, 0:2].T.astype("int"),names=["c_id", "s_id"],), columns=["std", "n_p"] + column_names)
-            cols = ["std", "n_p"] +[f"x{i}" for i in range(cluster_center_data[:, 4:].shape[1])]
-            self.df_centers = pd.DataFrame(cluster_center_data[:, 2:], index=pd.MultiIndex.from_arrays(cluster_center_data[:, 0:2].T.astype("int"), names=["c_id", "s_id"]), columns=cols)
+            self.df_curve = pd.DataFrame(
+                cluster_curve_data[:, 2:],
+                index=pd.MultiIndex.from_arrays(
+                    cluster_curve_data[:, 0:2].T.astype("int"),
+                    names=["c_id", "s_id"],
+                ),
+                columns=["std", "n_p"] + column_names,
+            )
+            cols = ["std", "n_p"] + [
+                f"x{i}" for i in range(cluster_center_data[:, 4:].shape[1])
+            ]
+            self.df_centers = pd.DataFrame(
+                cluster_center_data[:, 2:],
+                index=pd.MultiIndex.from_arrays(
+                    cluster_center_data[:, 0:2].T.astype("int"), names=["c_id", "s_id"]
+                ),
+                columns=cols,
+            )
             # TODO The std shall be as small as possible per subsequence.. this must be a penalty part as well!?
         # if self.include_std_num_points is True:
         #     # Add the number of points and the standard deviation per subsequence to the features
@@ -396,7 +411,9 @@ class MT3SCM:
                 self.df_curve.values, self.df_curve.index.get_level_values("c_id")
             )
             # Compute silhouette coefficient using kappa and tau
-            curve_params_data = np.array([self.kappa_X, self.tau_X, self.acceleration_X]).T
+            curve_params_data = np.array(
+                [self.kappa_X, self.tau_X, self.acceleration_X]
+            ).T
             self.spa = np.mean(silhouette_samples(curve_params_data, labels))
         except ValueError as error:
             print(f"silhouette_samples error: {error}. Setting sl and sp to zero!")
