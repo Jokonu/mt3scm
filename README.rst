@@ -13,7 +13,13 @@ Status::
 
     Work in progress 🚧
 
+Creating plots
+-----------------
 
+.. code:: bash
+
+    $ python -m plot_examples -car
+    $ python -m plot_perfect
 
 Comparison of unsupervised clustering metrics with lorenz attractor data
 ------------------------------------------------------------------------

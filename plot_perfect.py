@@ -36,9 +36,13 @@ def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_n
         calinski = calinski_harabasz_score(X, labels)
         silhouette = silhouette_score(X, labels)
         subplot_title = f"{davies=:.2n}, {calinski=:.2n}, {silhouette=:.2n}"
-    if X.shape[1] >= 3:
+    if X.shape[1] == 3:
         ax = fig.add_subplot(projection="3d")
         scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels, s=marker_size)
+        ax.set_zlabel(z_label)
+    elif X.shape[1] > 3:
+        ax = fig.add_subplot(projection="3d")
+        scatter = ax.scatter(X[:, 2], X[:, 3], X[:, 4], c=labels, s=marker_size)
         ax.set_zlabel(z_label)
     elif X.shape[1] == 2:
         ax = fig.add_subplot()
@@ -80,11 +84,39 @@ def plot_agglomerative_lorenz_on_new_feature_space():
     subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}\n{davies=:.2n}, {calinski=:.2n}, {silhouette=:.2n}"
     plot_testing_results(X, mt3scm_metric, labels, "agglomerative_lorenz-feature-space-example")
     labels_centers = mt3.df_centers.index.get_level_values("c_id")
-    plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "agglomerative_lorenz-feature-space-centers", marker_size=100, feature_names=mt3.df_centers.columns.to_list())
+    plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "agglomerative_lorenz-feature-space-centers", marker_size=100, feature_names=mt3.df_centers.columns.to_list()[2:])
     labels_curve = mt3.df_curve.index.get_level_values("c_id")
-    plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "agglomerative_lorenz-feature-space-curve-parameteres", marker_size=100, loc="best", feature_names=mt3.df_curve.columns.to_list())
+    plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "agglomerative_lorenz-feature-space-curve-parameteres", marker_size=100, loc="best", feature_names=mt3.df_curve.columns.to_list()[2:])
     subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}"
     plot_testing_results(X_all_curve_params, mt3scm_metric, labels, "agglomerative_lorenz-feature-space-allcurve-params", marker_size=100, feature_names=["acceleration", "curvature", "torsion"], loc="best", subplot_title=subplot_title)
+    print(subplot_title)
+
+def plot_agglomerative_own_synth_on_new_feature_space():
+    import helpers
+    from sklearn.cluster import OPTICS, DBSCAN, AgglomerativeClustering
+    df = helpers.gen_curve_synth_data()
+
+    X = df.values
+    true_labels = df.index.get_level_values("label")
+    mt3 = MT3SCM()
+    kappa, tau, speed, acceleration = mt3.compute_curvature(X)
+    X_all_curve_params = np.array([acceleration, kappa, tau]).T
+    # clustering = AgglomerativeClustering(n_clusters=4).fit(X_all_curve_params)
+    # labels = clustering.labels_
+    labels = true_labels
+    mt3scm_metric = mt3.mt3scm_score(X, labels, edge_offset=0, n_min_subs=1)
+
+    davies = davies_bouldin_score(X, labels)
+    calinski = calinski_harabasz_score(X, labels)
+    silhouette = silhouette_score(X, labels)
+    subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}\n{davies=:.2n}, {calinski=:.2n}, {silhouette=:.2n}"
+    plot_testing_results(X, mt3scm_metric, labels, "agglomerative_ownsynth-feature-space-example")
+    labels_centers = mt3.df_centers.index.get_level_values("c_id")
+    plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "agglomerative_ownsynth-feature-space-centers", marker_size=100, feature_names=mt3.df_centers.columns.to_list()[2:])
+    labels_curve = mt3.df_curve.index.get_level_values("c_id")
+    plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "agglomerative_ownsynth-feature-space-curve-parameteres", marker_size=100, loc="best", feature_names=mt3.df_curve.columns.to_list()[2:])
+    subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}"
+    plot_testing_results(X_all_curve_params, mt3scm_metric, labels, "agglomerative_ownsynth-feature-space-allcurve-params", marker_size=100, feature_names=["acceleration", "curvature", "torsion"], loc="best", subplot_title=subplot_title)
     print(subplot_title)
 
 
@@ -107,11 +139,13 @@ def main():
     print(f"{mt3.df_curve=}")
     print(f"{mt3.cccs=}")
     labels_centers = mt3.df_centers.index.get_level_values("c_id")
-    plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "subsequence-centers", marker_size=100, feature_names=mt3.df_centers.columns.to_list())
+    # plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "subsequence-centers", marker_size=100, feature_names=mt3.df_centers.columns.to_list())
+    plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "subsequence-centers", marker_size=100, feature_names=mt3.df_centers.columns.to_list()[2:])
     sil = silhouette_score(mt3.df_centers.values, labels_centers)
     print(f"df_centers {sil=:.2n}")
     labels_curve = mt3.df_curve.index.get_level_values("c_id")
-    plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "subsequence-curve-parameteres", marker_size=100, feature_names=mt3.df_curve.columns.to_list())
+    # plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "subsequence-curve-parameteres", marker_size=100, feature_names=mt3.df_curve.columns.to_list())
+    plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "subsequence-curve-parameteres", marker_size=100, feature_names=mt3.df_curve.columns.to_list()[2:])
     subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}"
     plot_testing_results(X_all_curve_params, mt3scm_metric, labels, "subsequence-allcurve-params", marker_size=100, feature_names=["curvature", "torsion", "acceleration"], loc="best", subplot_title=subplot_title)
     sil = silhouette_score(mt3.df_curve.values, labels_curve)
@@ -165,3 +199,4 @@ def curvature(X: np.ndarray):
 if __name__ == "__main__":
     main()
     plot_agglomerative_lorenz_on_new_feature_space()
+    plot_agglomerative_own_synth_on_new_feature_space()

@@ -202,8 +202,8 @@ def gen_synth_data():
     df.plot()
     plt.savefig(parent_path / "own_synth.png")
     plt.close()
-    mets, _, _ = calc_unsupervised_metrics(X, labels)
-    print(mets)
+    # mets, _, _ = calc_unsupervised_metrics(X, labels)
+    # print(mets)
     return X, labels
 
 
@@ -292,6 +292,25 @@ def generate_random_sequences(
         label_array[-1] = 1
     return label_array
 
+def generate_one_random_sequence(
+    length: int = 1000,
+    min_seq_length: int = 5,
+    max_seq_length: int = 10,
+    number_of_short_sequences: int = 1,
+):
+    data: np.ndarray = np.array([])
+    label_array: np.ndarray = np.zeros(length)
+    for seq_id in range(1, number_of_short_sequences + 1):
+    # while data.size < length:
+        seq_len = np.random.randint(min_seq_length, max_seq_length)
+        seq_pos_start = np.random.randint(1, length -1)
+        label_array[seq_pos_start:seq_pos_start + seq_len] = seq_id
+    # _, label_array = np.unique(data, return_inverse=True)
+    # n_unique_labels = len(np.unique(label_array))
+    # if n_unique_labels == 1:
+        # label_array[-1] = 1
+    return label_array
+
 
 def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **kwargs):
     """
@@ -346,6 +365,85 @@ def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **k
 
     return im, cbar
 
+
+def gen_curve_synth_data():
+    # generate curve 1
+    start = (0, 0, 1)
+    end = (3*np.pi, 0, -1)
+    n_points = 150
+    t = np.linspace(start=start[0], stop=end[0], num=n_points)
+    xt = t
+    yt = np.sin(t)
+    zt = np.cos(t)
+    X1 = np.stack((xt, yt, zt)).T
+    labels1 = 1 + np.zeros(n_points)
+
+    # generate passing from curve 1 to 2
+    start = (3*np.pi, -0.5, -1)
+    end = (3*np.pi, -1.88, -1)
+    n_points = 45
+    t = np.linspace(start=-start[1], stop=-end[1], num=n_points)
+    t = t**2 / 2
+    # t = np.geomspace(0.674, 100.0, num=1000)
+    xt = start[0] + np.zeros(n_points)
+    yt = -t
+    zt = start[2] + np.zeros(n_points)
+    X2 = np.stack((xt, yt, zt)).T
+    labels2 = 2 + np.zeros(n_points)
+
+    # generate curve2 from passing 1
+    start = (3.5*np.pi, -2, -1)
+    end = (0.5*np.pi, 2, 1)
+    n_points = 240
+    t = np.linspace(start=start[0], stop=end[0], num=n_points)
+    # t2 = np.linspace(start=3*np.pi, stop=0, num=n_points)
+    xt = np.linspace(start=3*np.pi, stop=0, num=n_points)
+    # xt = t - xt[0]
+    yt = np.cos(t) - 2
+    zt = np.sin(t)
+    X3 = np.stack((xt, yt, zt)).T
+    endpoint = (X3[-1, 0], X3[-1, 1], X3[-1, 2])
+    labels3 = 3 + np.zeros(n_points)
+
+    # generate passing from curve 2 to 1
+    start = (0, -2, 1)
+    end = (0, 0.01, -1)
+    n_points = 50
+    t = np.linspace(start=0.35, stop=1.9, num=n_points)
+    t = t**2 / 2
+    # t = np.geomspace(0.674, 100.0, num=1000)
+    xt = start[0] + np.zeros(n_points)
+    yt = -t
+    yt = np.flip(yt)
+    zt = start[2] + np.zeros(n_points)
+    X4 = np.stack((xt, yt, zt)).T
+    labels4 = 4 + np.zeros(n_points)
+    # import pdb;pdb.set_trace()
+    X = np.concatenate([X1, X2, X3, X4])
+    X = np.concatenate([X, X+0.00001, X-0.00001])
+    # Concatenate the subsequence labels
+    labels = np.concatenate([labels1, labels2, labels3, labels4])
+    instance = np.zeros_like(labels)
+    # Concatenate the instances
+    instances = np.concatenate([instance, instance + 1, instance + 1])
+    # Concatenate the instance labels
+    labels = np.concatenate([labels, labels, labels])
+    # Repeat the data to have more subsequences per cluster
+    n_repeats = 10
+    X = np.tile(X, (n_repeats, 1))
+    labels = np.tile(labels, n_repeats)
+    instances = np.tile(instances, n_repeats)
+    # Add some randomness to the data.
+    # X = np.random.rand(X.shape[0], X.shape[1]) * 0.01 + X
+    X = np.random.rand(X.shape[0], X.shape[1]) * 0.00001 + X
+    # Create DataFrame
+    df = pd.DataFrame(data=X, columns=["x", "y", "z"])
+    # Add index with labels
+    df["time"] = np.arange(0, X.shape[0])
+    df["label"] = labels
+    df["instance"] = instances
+    df = df.set_index(["time", "label", "instance"])
+    return df
 
 def annotate_heatmap(
     im,
