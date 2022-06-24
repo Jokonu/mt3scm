@@ -4,12 +4,14 @@
 # License: BSD 3 clause
 
 # Standard Libraries Import
+import logging
 from pathlib import Path
 
 # Third Party Libraries Import
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 from matplotlib import cm
 from matplotlib.colors import Normalize
 from sklearn.metrics import (
@@ -21,6 +23,43 @@ from sklearn.metrics import (
 # Own Libraries Import
 from mt3scm import MT3SCM
 
+
+def setupLogger(logging_file_path: Path = None, name: str = "jizzle", loglevel="INFO", log_to_file: bool = False):
+    if loglevel is None:
+        loglevel = "INFO"
+    if logging_file_path is None:
+        logging_file_path = Path.cwd() / "logs"
+        logging_file_name = logging_file_path / "logger.log"
+        Path(logging_file_path).mkdir(parents=True, exist_ok=True)
+    logger = logging.getLogger(name)
+    logger.setLevel(loglevel)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(loglevel)
+    # create formatter and add it to the handlers
+    fmt = "%(asctime)s - %(name)s %(levelname)s %(funcName)s: %(message)s"
+    if log_to_file is True:
+        # create file handler which logs warning messages
+        fh = logging.FileHandler(logging_file_name)
+        fh.setLevel(loglevel)
+        fh.setFormatter(logging.Formatter(fmt))
+        logger.addHandler(fh)
+    ch.setFormatter(logging.Formatter(fmt))
+    logger.addHandler(ch)
+    # coloredlogs.install(level=loglevel, logger=logger, fmt=fmt)
+    return logger
+
+def set_plot_params():
+    sns.set_style("whitegrid")
+    plt.rcParams.update(
+        {
+            "text.usetex": True,
+            "font.family": "serif",
+            "font.sans-serif": ["Computer Modern Roman"],
+            "axes.grid": False,
+            "image.cmap": cm.get_cmap("viridis")
+        }
+    )
 
 def ax_scatter_3d(
     X,
@@ -55,9 +94,7 @@ def ax_scatter_3d(
     n_unique_labels = len(np.unique(labels))
     cmap = cm.get_cmap("viridis", n_unique_labels)
     norm = Normalize(vmin=0, vmax=n_unique_labels, clip=False)
-    scat = ax.scatter(
-        X, Y, Z, c=labels, cmap=cmap, s=marker_size, marker=marker, norm=norm
-    )
+    scat = ax.scatter(X, Y, Z, c=labels, cmap=cmap, s=marker_size, marker=marker, norm=norm)
     fig = plt.gcf()
     clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.2)
     clb.ax.set_title("Cluster ID", fontsize=10)
@@ -90,7 +127,7 @@ def gen_synth_data():
     # generate curve 1
     start = (0, 0, 1)
     end = (3 * np.pi, 0, -1)
-    n_points = 150
+    n_points = 50
     t = np.linspace(start=start[0], stop=end[0], num=n_points)
     xt = t
     yt = np.sin(t)
@@ -101,7 +138,7 @@ def gen_synth_data():
     # generate passing from curve 1 to 2
     start = (3 * np.pi, -0.5, -1)
     end = (3 * np.pi, -1.88, -1)
-    n_points = 45
+    n_points = 15
     t = np.linspace(start=-start[1], stop=-end[1], num=n_points)
     t = t**2 / 2
     # t = np.geomspace(0.674, 100.0, num=1000)
@@ -114,7 +151,7 @@ def gen_synth_data():
     # generate curve2 from passing 1
     start = (3.5 * np.pi, -2, -1)
     end = (0.5 * np.pi, 2, 1)
-    n_points = 240
+    n_points = 300
     t = np.linspace(start=start[0], stop=end[0], num=n_points)
     # t2 = np.linspace(start=3*np.pi, stop=0, num=n_points)
     xt = np.linspace(start=3 * np.pi, stop=0, num=n_points)
@@ -128,7 +165,7 @@ def gen_synth_data():
     # generate passing from curve 2 to 1
     start = (0, -2, 1)
     end = (0, 0.01, -1)
-    n_points = 50
+    n_points = 80
     t = np.linspace(start=0.35, stop=1.9, num=n_points)
     t = t**2 / 2
     # t = np.geomspace(0.674, 100.0, num=1000)
@@ -142,6 +179,7 @@ def gen_synth_data():
 
     X = np.concatenate([X1, X2, X3, X4])
     X = np.concatenate([X, X + 0.00001, X - 0.00001])
+    # X = np.concatenate([X, X, X])
     labels = np.concatenate([labels1, labels2, labels3, labels4])
     labels = np.concatenate([labels, labels, labels])
 
@@ -164,14 +202,12 @@ def gen_synth_data():
     df.plot()
     plt.savefig(parent_path / "own_synth.png")
     plt.close()
-    mets, _, _ = calc_unsupervised_metrics(X, labels)
-    print(mets)
+    # mets, _, _ = calc_unsupervised_metrics(X, labels)
+    # print(mets)
     return X, labels
 
 
-def generate_thomas_attractor_data(
-    dt: float = 1, num_steps: int = 2000, b: float = 0.1615
-):
+def generate_thomas_attractor_data(dt: float = 1, num_steps: int = 2000, b: float = 0.1615):
     def thomas(x, y, z, b=0.1998):
         x_dot = np.sin(y) - (b * x)
         y_dot = np.sin(z) - (b * y)
@@ -255,3 +291,219 @@ def generate_random_sequences(
     if n_unique_labels == 1:
         label_array[-1] = 1
     return label_array
+
+def generate_one_random_sequence(
+    length: int = 1000,
+    min_seq_length: int = 5,
+    max_seq_length: int = 10,
+    number_of_short_sequences: int = 1,
+):
+    data: np.ndarray = np.array([])
+    label_array: np.ndarray = np.zeros(length)
+    for seq_id in range(1, number_of_short_sequences + 1):
+    # while data.size < length:
+        seq_len = np.random.randint(min_seq_length, max_seq_length)
+        seq_pos_start = np.random.randint(1, length -1)
+        label_array[seq_pos_start:seq_pos_start + seq_len] = seq_id
+    # _, label_array = np.unique(data, return_inverse=True)
+    # n_unique_labels = len(np.unique(label_array))
+    # if n_unique_labels == 1:
+        # label_array[-1] = 1
+    return label_array
+
+
+def heatmap(data, row_labels, col_labels, ax=None, cbar_kw={}, cbarlabel="", **kwargs):
+    """
+    Create a heatmap from a numpy array and two lists of labels.
+
+    Parameters
+    ----------
+    data
+        A 2D numpy array of shape (M, N).
+    row_labels
+        A list or array of length M with the labels for the rows.
+    col_labels
+        A list or array of length N with the labels for the columns.
+    ax
+        A `matplotlib.axes.Axes` instance to which the heatmap is plotted.  If
+        not provided, use current axes or create a new one.  Optional.
+    cbar_kw
+        A dictionary with arguments to `matplotlib.Figure.colorbar`.  Optional.
+    cbarlabel
+        The label for the colorbar.  Optional.
+    **kwargs
+        All other arguments are forwarded to `imshow`.
+    """
+
+    if not ax:
+        ax = plt.gca()
+
+    # Plot the heatmap
+    im = ax.imshow(data, **kwargs)
+
+    # Create colorbar
+    cbar = ax.figure.colorbar(im, ax=ax, **cbar_kw)
+    cbar.ax.set_ylabel(cbarlabel, rotation=-90, va="bottom")
+
+    # Show all ticks and label them with the respective list entries.
+    ax.set_xticks(np.arange(data.shape[1]), labels=col_labels)
+    ax.set_yticks(np.arange(data.shape[0]), labels=row_labels)
+
+    # Let the horizontal axes labeling appear on top.
+    ax.tick_params(top=True, bottom=False, labeltop=True, labelbottom=False)
+
+    # Rotate the tick labels and set their alignment.
+    plt.setp(ax.get_xticklabels(), rotation=-30, ha="right", rotation_mode="anchor")
+
+    # Turn spines off and create white grid.
+    ax.spines[:].set_visible(False)
+
+    ax.set_xticks(np.arange(data.shape[1] + 1) - 0.5, minor=True)
+    ax.set_yticks(np.arange(data.shape[0] + 1) - 0.5, minor=True)
+    ax.grid(which="minor", color="w", linestyle="-", linewidth=3)
+    ax.tick_params(which="minor", bottom=False, left=False)
+
+    return im, cbar
+
+
+def gen_curve_synth_data():
+    # generate curve 1
+    start = (0, 0, 1)
+    end = (3*np.pi, 0, -1)
+    n_points = 150
+    t = np.linspace(start=start[0], stop=end[0], num=n_points)
+    xt = t
+    yt = np.sin(t)
+    zt = np.cos(t)
+    X1 = np.stack((xt, yt, zt)).T
+    labels1 = 1 + np.zeros(n_points)
+
+    # generate passing from curve 1 to 2
+    start = (3*np.pi, -0.5, -1)
+    end = (3*np.pi, -1.88, -1)
+    n_points = 45
+    t = np.linspace(start=-start[1], stop=-end[1], num=n_points)
+    t = t**2 / 2
+    # t = np.geomspace(0.674, 100.0, num=1000)
+    xt = start[0] + np.zeros(n_points)
+    yt = -t
+    zt = start[2] + np.zeros(n_points)
+    X2 = np.stack((xt, yt, zt)).T
+    labels2 = 2 + np.zeros(n_points)
+
+    # generate curve2 from passing 1
+    start = (3.5*np.pi, -2, -1)
+    end = (0.5*np.pi, 2, 1)
+    n_points = 240
+    t = np.linspace(start=start[0], stop=end[0], num=n_points)
+    # t2 = np.linspace(start=3*np.pi, stop=0, num=n_points)
+    xt = np.linspace(start=3*np.pi, stop=0, num=n_points)
+    # xt = t - xt[0]
+    yt = np.cos(t) - 2
+    zt = np.sin(t)
+    X3 = np.stack((xt, yt, zt)).T
+    endpoint = (X3[-1, 0], X3[-1, 1], X3[-1, 2])
+    labels3 = 3 + np.zeros(n_points)
+
+    # generate passing from curve 2 to 1
+    start = (0, -2, 1)
+    end = (0, 0.01, -1)
+    n_points = 50
+    t = np.linspace(start=0.35, stop=1.9, num=n_points)
+    t = t**2 / 2
+    # t = np.geomspace(0.674, 100.0, num=1000)
+    xt = start[0] + np.zeros(n_points)
+    yt = -t
+    yt = np.flip(yt)
+    zt = start[2] + np.zeros(n_points)
+    X4 = np.stack((xt, yt, zt)).T
+    labels4 = 4 + np.zeros(n_points)
+    # import pdb;pdb.set_trace()
+    X = np.concatenate([X1, X2, X3, X4])
+    X = np.concatenate([X, X+0.00001, X-0.00001])
+    # Concatenate the subsequence labels
+    labels = np.concatenate([labels1, labels2, labels3, labels4])
+    instance = np.zeros_like(labels)
+    # Concatenate the instances
+    instances = np.concatenate([instance, instance + 1, instance + 1])
+    # Concatenate the instance labels
+    labels = np.concatenate([labels, labels, labels])
+    # Repeat the data to have more subsequences per cluster
+    n_repeats = 10
+    X = np.tile(X, (n_repeats, 1))
+    labels = np.tile(labels, n_repeats)
+    instances = np.tile(instances, n_repeats)
+    # Add some randomness to the data.
+    # X = np.random.rand(X.shape[0], X.shape[1]) * 0.01 + X
+    X = np.random.rand(X.shape[0], X.shape[1]) * 0.00001 + X
+    # Create DataFrame
+    df = pd.DataFrame(data=X, columns=["x", "y", "z"])
+    # Add index with labels
+    df["time"] = np.arange(0, X.shape[0])
+    df["label"] = labels
+    df["instance"] = instances
+    df = df.set_index(["time", "label", "instance"])
+    return df
+
+def annotate_heatmap(
+    im,
+    data=None,
+    valfmt="{x:.2f}",
+    textcolors=("black", "white"),
+    threshold=None,
+    **textkw,
+):
+    """
+    A function to annotate a heatmap.
+
+    Parameters
+    ----------
+    im
+        The AxesImage to be labeled.
+    data
+        Data used to annotate.  If None, the image's data is used.  Optional.
+    valfmt
+        The format of the annotations inside the heatmap.  This should either
+        use the string format method, e.g. "$ {x:.2f}", or be a
+        `matplotlib.ticker.Formatter`.  Optional.
+    textcolors
+        A pair of colors.  The first is used for values below a threshold,
+        the second for those above.  Optional.
+    threshold
+        Value in data units according to which the colors from textcolors are
+        applied.  If None (the default) uses the middle of the colormap as
+        separation.  Optional.
+    **kwargs
+        All other arguments are forwarded to each call to `text` used to create
+        the text labels.
+    """
+
+    if not isinstance(data, (list, np.ndarray)):
+        data = im.get_array()
+
+    # Normalize the threshold to the images color range.
+    if threshold is not None:
+        threshold = im.norm(threshold)
+    else:
+        threshold = im.norm(data.max()) / 2.0
+
+    # Set default alignment to center, but allow it to be
+    # overwritten by textkw.
+    kw = dict(horizontalalignment="center", verticalalignment="center")
+    kw.update(textkw)
+
+    # Get the formatter in case a string is supplied
+    if isinstance(valfmt, str):
+        valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+
+    # Loop over the data and create a `Text` for each "pixel".
+    # Change the text's color depending on the data.
+    texts = []
+    for i in range(data.shape[0]):
+        for j in range(data.shape[1]):
+            if not isinstance(data[i, j], np.ma.core.MaskedConstant):
+                kw.update(color=textcolors[int(im.norm(data[i, j]) > threshold)])
+                text = im.axes.text(j, i, valfmt(data[i, j], None), **kw)
+                texts.append(text)
+
+    return texts

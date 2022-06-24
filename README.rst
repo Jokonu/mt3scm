@@ -5,11 +5,21 @@ Multivariate Time Series Sub-Sequence Clustering Metric
 
 This repository provides a Python package for computing a multivariate time series subsequence clustering metric.
 
+Metric uses [#]_ using silhouette score [#]_
+
+
+
 Status::
 
     Work in progress 🚧
 
+Creating plots
+-----------------
 
+.. code:: bash
+
+    $ python -m plot_examples -car
+    $ python -m plot_perfect
 
 Comparison of unsupervised clustering metrics with lorenz attractor data
 ------------------------------------------------------------------------
@@ -79,3 +89,10 @@ Testing the package with pytest and generating code coverage information.
 
     # Generating html report
     $ pytest --cov=mt3scm --cov-report=html
+
+
+.. rubric:: References
+
+.. [#] Rousseeuw, P. J. Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. Journal of Computational and Applied Mathematics 20. PII: 0377042787901257, 53–65. ISSN: 03770427 (1987)
+
+.. [#] Rousseeuw, P. J. Silhouettes: A graphical aid to the interpretation and validation of cluster analysis. Journal of Computational and Applied Mathematics 20. PII: 0377042787901257, 53–65. ISSN: 03770427 (1987)
