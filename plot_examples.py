@@ -30,7 +30,7 @@ from mt3scm import MT3SCM
 
 RESOLUTION_DPI = 300
 TRANSPARENT = False
-GRAPHICS_FORMAT = "png"  # or png, pdf, svg
+GRAPHICS_FORMAT = "pdf"  # or png, pdf, svg
 
 
 def plot_random_examples(
@@ -472,13 +472,56 @@ def plot_one_example():
         )
 
 
+def ax_scatter_3d_original(X, Y, Z, ax, kappa: np.ndarray, xyz_labels: list[str] = ["x", "y", "z"], subplot_title: str = None, marker_size: float = 0.8, marker_size_array=None, marker="o", plot_changepoints: bool = True, alpha=0.3, line_scaling_factor: float = 1.0):
+    cmap = cm.get_cmap("viridis")
+    marker="."
+    data = kappa
+    data = (data - data.min()) / (np.std(data))
+    color = np.log((np.abs(data* 10) + 1) ** 2) * line_scaling_factor
+    scat = ax.scatter(X, Y, Z, c=color, cmap=cmap, s=color, marker=marker)
+    ax.set_title(subplot_title)
+    ax.set_xlabel(f"{xyz_labels[0]} [-]")
+    ax.set_ylabel(f"{xyz_labels[1]} [-]")
+    ax.set_zlabel(f"{xyz_labels[2]} [-]")
+    ax.tick_params(labelsize=8)
+    fig = plt.gcf()
+    clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.2)
+    clb.set_ticks([color.min(),color.max() / 2, color.max()])
+    clb.set_ticklabels(['Low', 'Medium', 'High'], rotation = 45)
+    clb.ax.tick_params(labelsize=8)
+
+
+def create_3d_figure(df: pd.DataFrame, xyz_labels: list[str] = ["x", "y", "z"], predicted_class_array: np.ndarray = None, plot_changepoints: bool = True):
+    fig = plt.figure(constrained_layout=False, figsize=(4, 4))
+    ax = fig.add_subplot(projection="3d", computed_zorder=False)
+    X = df.values
+    mt3 = MT3SCM()
+    if predicted_class_array is None:
+        predicted_class_array = np.ones(X.shape[0])
+        predicted_class_array[0] = 0
+    mt3scm_metric = mt3.mt3scm_score(X, predicted_class_array, standardize_subs_curve=True)
+    kappa = np.log((np.abs(mt3.kappa_X * 1) + 1) ** 1)
+    ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=kappa, xyz_labels=xyz_labels, subplot_title=None)
+    return fig
+
+
+def plot_lorenz_attractor_3d():
+    df = helpers.generate_lorenz_attractor_data()
+    helpers.set_plot_params()
+    fig = create_3d_figure(df)
+    plot_name = str("lorenz-attractor-3d." + GRAPHICS_FORMAT)
+    subplot_path = Path().cwd() / "plots"
+    Path(subplot_path).mkdir(parents=True, exist_ok=True)
+    fig.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
+    plt.close(fig)
+
+
 def plot_curvature_torsion_example():
     helpers.set_plot_params()
-    # Get thomas attractor data as dataframe
     df_thomas = helpers.generate_thomas_attractor_data(dt=0.05, num_steps=500, b=0.1)
-    X_thomas = StandardScaler().fit_transform(df_thomas.values)
+    X = StandardScaler().fit_transform(df_thomas.values)
     mt3 = MT3SCM()
-    kappa, tau, speed, acceleration = mt3.compute_curvature(X_thomas)
+    kappa, tau, speed, acceleration = mt3.compute_curvature(X)
     curv_data = [kappa, tau]
     curv_data = {
         "Curvature": kappa,
@@ -486,75 +529,15 @@ def plot_curvature_torsion_example():
         "Speed": speed,
         "Acceleration": acceleration,
     }
-    # n_subfigs = len(speed_data.keys())
-    n_subfigs = 1
-    n_subplots = len(curv_data.keys())
-    fig = plt.figure(constrained_layout=True, figsize=(4 * n_subplots, 4 * n_subfigs))
-    # Setting global title
-    # fig.suptitle(r"\textbf{'Multivariate Time Series Sub-Sequence Clustering Metric' (MT3SCM) Components}")
-    # Create subfigures for connectivity and number of clusters
-    subfigs = fig.subfigures(n_subfigs, 1, squeeze=False)
-    subfig_index = 0
-    subplots_index = 0
-    axs = subfigs[subfig_index][0].subplots(
-        1, n_subplots, subplot_kw=dict(projection="3d"), squeeze=False
-    )
-    subfigs[subfig_index][0].suptitle(f"")
     for subplots_index, (name, data) in enumerate(curv_data.items()):
-        subtitle = f"{name}"
-        cmap = cm.get_cmap("viridis")
-        marker = "."
-        ax = axs[0][subplots_index]
-        data = (data - data.min()) / (np.std(data))
-        color = np.log((np.abs(data * 10) + 1) ** 2) * 100
-        scat = ax.scatter(
-            X_thomas[:, 0],
-            X_thomas[:, 1],
-            X_thomas[:, 2],
-            c=color,
-            cmap=cmap,
-            s=color,
-            marker=marker,
-        )
-        ax.set_title(subtitle)
-        fig = plt.gcf()
-        clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.1)
-        clb.set_ticks([color.min(), color.max() / 2, color.max()])
-        clb.set_ticklabels(["Low", "Medium", "High"])
-        # subtitle = f""
-        plot_name = f"ClusterMetricCurvatureTorsionExample-{name}.{GRAPHICS_FORMAT}"
-        single_fig = plt.figure(2, constrained_layout=False, figsize=(4, 4))
-        ax2 = single_fig.add_subplot(projection="3d", computed_zorder=False)
-        scat = ax2.scatter(
-            X_thomas[:, 0],
-            X_thomas[:, 1],
-            X_thomas[:, 2],
-            c=color,
-            cmap=cmap,
-            s=color,
-            marker=marker,
-        )
-        # ax2.set_title(subtitle)
-        clb = single_fig.colorbar(scat, ax=ax2, shrink=0.5, pad=0.1)
-        clb.set_ticks([color.min(), color.max() / 2, color.max()])
-        clb.set_ticklabels(["Low", "Medium", "High"])
-        plt.figure(2)
+        fig = plt.figure(constrained_layout=False, figsize=(4, 4))
+        ax = fig.add_subplot(projection="3d", computed_zorder=False)
+        ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=data, line_scaling_factor=100)
+        plot_name = f"{name}.{GRAPHICS_FORMAT}"
         subplot_path = Path().cwd() / "plots"
         Path(subplot_path).mkdir(parents=True, exist_ok=True)
-        plt.savefig(
-            subplot_path / plot_name,
-            pad_inches=0,
-            bbox_inches="tight",
-            transparent=TRANSPARENT,
-            dpi=RESOLUTION_DPI,
-            format=GRAPHICS_FORMAT,
-        )
-        plt.close(2)
-        # clb.ax.set_title(name, fontsize=10)
-    plot_name = f"ClusterMetricCurvatureTorsionExample.png"
-    print(f"Saving plot with name: {plot_name}")
-    plt.savefig(plot_name, dpi=300)
-    plt.close()
+        fig.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
+        plt.close(fig)
 
 
 if __name__ == "__main__":
@@ -594,15 +577,16 @@ if __name__ == "__main__":
         plot_one_example()
     if args.curve is True:
         print(f"Plotting curvature torsion example..")
+        plot_lorenz_attractor_3d()
         plot_curvature_torsion_example()
     if args.kmeans is True:
-        print(f"Plotting curvature torsion example..")
+        print(f"Plotting examples for kmeans..")
         plot_examples(algorithms=["kmeans"])
     if args.agglomerative is True:
-        print(f"Plotting curvature torsion example..")
+        print(f"Plotting examples for agglomerative..")
         plot_examples(algorithms=["agglomerative"])
     if args.random is True:
-        print(f"Plotting curvature torsion example..")
+        print(f"Plotting examples for random..")
         plot_examples(algorithms=["random"])
     if args.short is True:
         print(f"Plotting one short example..")

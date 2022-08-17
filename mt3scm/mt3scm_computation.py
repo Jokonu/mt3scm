@@ -100,7 +100,7 @@ class MT3SCM:
         include_acceleration: bool = True,
         include_std_num_points: bool = True,
         weigh_metrics_on_n_points: bool = True,
-        weigh_metrics_on_curve_std: bool = True,
+        weigh_metrics_on_curve_std: bool = False,
         distance_fn: str = "manhatten",
         scale_input_data: bool = False,
         smooth_input_data: bool = False,
