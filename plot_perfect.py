@@ -21,9 +21,70 @@ from mt3scm import MT3SCM
 
 RESOLUTION_DPI = 300
 TRANSPARENT = False
-GRAPHICS_FORMAT = "png"  # or png, pdf, svg
+GRAPHICS_FORMAT = "pdf"  # or png, pdf, svg
 
-def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_name: str, marker_size:float=10.0, fig_suptitle:str=None, subplot_title:str=None, loc:str="upper left", legend_title:str="Clusters", feature_names:list[str]=["x", "y", "z"]):
+def scatter_plot(X, ax, x_label, y_label, z_label, labels: np.ndarray, autorotate_labels: bool = True, subplot_title: str = None, loc:str="best", marker_size:float=10.0, legend_title:str="Cluster"):
+    scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels, s=marker_size)
+    ax.set_title(subplot_title)
+    legend1 = ax.legend(*scatter.legend_elements(), loc=loc, title=legend_title)
+    ax.add_artist(legend1)
+    ax.zaxis.set_rotate_label(autorotate_labels)
+    ax.yaxis.set_rotate_label(autorotate_labels)
+    ax.xaxis.set_rotate_label(autorotate_labels)
+    ax.set_zlabel(z_label)
+    ax.set_xlabel(x_label)
+    ax.set_ylabel(y_label)
+    return ax
+
+def publication_plots():
+    import helpers
+    import string
+    import pandas as pd
+    X, labels = gen_synth_data()
+    mt3 = MT3SCM()
+    kappa, tau, speed, acceleration = mt3.compute_curvature(X)
+    X_all_curve_params = np.array([kappa, tau, acceleration]).T
+    # Score calculation and plotting
+    sil = silhouette_score(X, labels)
+    print(f"X {sil=}")
+    mt3scm_metric = mt3.mt3scm_score(X, labels, edge_offset=5)
+    labels_centers = mt3.df_centers.index.get_level_values("c_id")
+    labels_curve = mt3.df_curve.index.get_level_values("c_id")
+    print(f"Plotting koehn7..")
+    medians = mt3.df_centers.values
+    curves = mt3.df_curve.values
+    data = [X, medians, curves]
+    y = [labels, labels_centers, labels_curve]
+    feat_names = [
+        ["x", "y", "z"],
+        ["x", "y", "z"],
+        [r"$\overline{\kappa}$", r"$\overline{\tau}$", r"$\overline{a}$"]
+    ]
+    markers_size = [10, 100, 100]
+    n_x_subfigs = 3
+    n_y_subfigs = 1
+    n_y_subplots = 1
+    n_x_subplots = 1
+    fig_titles = string.ascii_lowercase[:n_x_subfigs]
+    helpers.set_plot_params()
+    fig = plt.figure(1, constrained_layout=False, figsize=(4 * n_x_subfigs, 4 * n_y_subfigs))
+    # Create subfigures for connectivity and number of clusters
+    subfigs = fig.subfigures(n_y_subfigs, n_x_subfigs, squeeze=True)
+    idx = 0
+    result_index_names = ["max_n_sequences", "n_clusters", "min_seq_len", "max_seq_len"]
+    df_metrics = pd.DataFrame()
+    for subfig_index in range(n_x_subfigs * n_y_subfigs):
+        # Create subplots for all linkage variations
+        axs = subfigs[subfig_index].subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), squeeze=True)
+        subfigs[subfig_index].suptitle(f"({fig_titles[subfig_index]})")
+        ax = scatter_plot(data[subfig_index], axs, feat_names[subfig_index][0], feat_names[subfig_index][1], feat_names[subfig_index][2], y[subfig_index], autorotate_labels=False, marker_size=markers_size[subfig_index])
+    plot_name = f"koehn7.pdf"
+    print(f"Saving plot with name: {plot_name}")
+    plt.figure(1)
+    plt.savefig(plot_name, dpi=300)
+    plt.close(1)
+
+def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_name: str, marker_size:float=10.0, fig_suptitle:str=None, subplot_title:str=None, loc:str="best", legend_title:str="Cluster", feature_names:list[str]=["x", "y", "z"], autorotate_labels: bool =True):
     x_label, y_label, z_label = feature_names
     set_plot_params()
     fig = plt.figure(
@@ -31,30 +92,16 @@ def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_n
     )
     if fig_suptitle is not None:
         fig.suptitle(fig_suptitle)
+    davies = davies_bouldin_score(X, labels)
+    calinski = calinski_harabasz_score(X, labels)
+    silhouette = silhouette_score(X, labels)
     if subplot_title is None:
-        davies = davies_bouldin_score(X, labels)
-        calinski = calinski_harabasz_score(X, labels)
-        silhouette = silhouette_score(X, labels)
         subplot_title = f"{davies=:.2n}, {calinski=:.2n}, {silhouette=:.2n}"
-    if X.shape[1] == 3:
-        ax = fig.add_subplot(projection="3d")
-        scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels, s=marker_size)
-        ax.set_zlabel(z_label)
-    elif X.shape[1] > 3:
-        ax = fig.add_subplot(projection="3d")
-        scatter = ax.scatter(X[:, 2], X[:, 3], X[:, 4], c=labels, s=marker_size)
-        ax.set_zlabel(z_label)
-    elif X.shape[1] == 2:
-        ax = fig.add_subplot()
-        scatter = ax.scatter(X[:, 0], X[:, 1], c=labels)
-    ax.set_title(subplot_title)
-    legend1 = ax.legend(*scatter.legend_elements(), loc=loc, title=legend_title)
-    ax.add_artist(legend1)
-    ax.set_xlabel(x_label)
-    ax.set_ylabel(y_label)
+    ax = fig.add_subplot(projection="3d")
+    ax = scatter_plot(X, ax, x_label, y_label, z_label, labels)
     test_plots_path: Path = Path("test_plots")
     Path(test_plots_path).mkdir(parents=True, exist_ok=True)
-    full_plot_name: Path = test_plots_path / str(test_name + ".png")
+    full_plot_name: Path = test_plots_path / str(test_name + "." + GRAPHICS_FORMAT)
     # plt.tight_layout()
     plt.savefig(
         full_plot_name,
@@ -64,6 +111,7 @@ def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_n
         dpi=RESOLUTION_DPI,
         format=GRAPHICS_FORMAT,
     )
+    print(f"Plotted and saved: {test_name} with metrics: {davies=:.2n}, {calinski=:.2n}, {silhouette=:.2n}")
     plt.close()
 
 def plot_agglomerative_lorenz_on_new_feature_space():
@@ -125,6 +173,24 @@ def plot_agglomerative_own_synth_on_new_feature_space():
     plot_testing_results(X_all_curve_params, mt3scm_metric, labels, "agglomerative_ownsynth-feature-space-allcurve-params", marker_size=100, feature_names=["acceleration", "curvature", "torsion"], loc="best", subplot_title=subplot_title)
     print(subplot_title)
 
+def generate_graphics_for_publication():
+    X, labels = gen_synth_data()
+    mt3 = MT3SCM()
+    kappa, tau, speed, acceleration = mt3.compute_curvature(X)
+    X_all_curve_params = np.array([kappa, tau, acceleration]).T
+    # Score calculation and plotting
+    sil = silhouette_score(X, labels)
+    print(f"X {sil=}")
+    mt3scm_metric = mt3.mt3scm_score(X, labels, edge_offset=5)
+    labels_centers = mt3.df_centers.index.get_level_values("c_id")
+    labels_curve = mt3.df_curve.index.get_level_values("c_id")
+    print(f"Plotting koehn7..")
+    plot_testing_results(X, mt3scm_metric, labels, "constant-curvature-data-example", subplot_title="", legend_title="Cluster", autorotate_labels=False)
+    print(f"Plotting koehn8..")
+    plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "subsequence-centers", marker_size=100, subplot_title="", legend_title="Cluster", autorotate_labels=False)
+    print(f"Plotting koehn9..")
+    feat_names = [r"$\overline{\kappa}$", r"$\overline{\tau}$", r"$\overline{a}$"]
+    plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "subsequence-curve-parameteres", marker_size=100, feature_names=feat_names, subplot_title="", legend_title="Cluster", autorotate_labels=False)
 
 def main():
     X, labels = gen_synth_data()
@@ -203,6 +269,8 @@ def curvature(X: np.ndarray):
 
 
 if __name__ == "__main__":
-    main()
-    plot_agglomerative_lorenz_on_new_feature_space()
-    plot_agglomerative_own_synth_on_new_feature_space()
+    publication_plots()
+    # generate_graphics_for_publication()
+    # main()
+    # plot_agglomerative_lorenz_on_new_feature_space()
+    # plot_agglomerative_own_synth_on_new_feature_space()

@@ -61,6 +61,32 @@ def set_plot_params():
         }
     )
 
+
+def ax_scatter_3d_original(X, Y, Z, ax, kappa: np.ndarray, xyz_labels: list[str] = ["x", "y", "z"], subplot_title: str = None, marker_size: float = 0.8, marker_size_array=None, marker="o", plot_changepoints: bool = True, alpha=0.3, line_scaling_factor: float = 1.0, set_ticks_and_labels: bool = True, pad: float=0.2):
+    cmap = cm.get_cmap("viridis")
+    marker="."
+    data = kappa
+    data = (data - data.min()) / (np.std(data))
+    color = np.log((np.abs(data* 10) + 1) ** 2) * line_scaling_factor
+    scat = ax.scatter(X, Y, Z, c=color, cmap=cmap, s=color, marker=marker)
+    ax.set_title(subplot_title)
+    fig = plt.gcf()
+    clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=pad)
+    clb.set_ticks([color.min(),color.max() / 2, color.max()])
+    if set_ticks_and_labels is True:
+        ax.set_xlabel(f"{xyz_labels[0]} [-]")
+        ax.set_ylabel(f"{xyz_labels[1]} [-]")
+        ax.set_zlabel(f"{xyz_labels[2]} [-]")
+        ax.tick_params(labelsize=8)
+        clb.set_ticklabels(['Low', 'Medium', 'High'], rotation = 45)
+        clb.ax.tick_params(labelsize=8)
+    else:
+        ax.tick_params(labelbottom = False, labelleft=False)
+        # clb.set_ticklabels(['L', 'M', 'H'], rotation = 0)
+        clb.set_ticklabels(['', '', ''], rotation = 0)
+        clb.ax.tick_params(labelsize=8)
+        # clb.ax.tick_params(labelright=False)
+
 def ax_scatter_3d(
     X,
     Y,

@@ -472,25 +472,6 @@ def plot_one_example():
         )
 
 
-def ax_scatter_3d_original(X, Y, Z, ax, kappa: np.ndarray, xyz_labels: list[str] = ["x", "y", "z"], subplot_title: str = None, marker_size: float = 0.8, marker_size_array=None, marker="o", plot_changepoints: bool = True, alpha=0.3, line_scaling_factor: float = 1.0):
-    cmap = cm.get_cmap("viridis")
-    marker="."
-    data = kappa
-    data = (data - data.min()) / (np.std(data))
-    color = np.log((np.abs(data* 10) + 1) ** 2) * line_scaling_factor
-    scat = ax.scatter(X, Y, Z, c=color, cmap=cmap, s=color, marker=marker)
-    ax.set_title(subplot_title)
-    ax.set_xlabel(f"{xyz_labels[0]} [-]")
-    ax.set_ylabel(f"{xyz_labels[1]} [-]")
-    ax.set_zlabel(f"{xyz_labels[2]} [-]")
-    ax.tick_params(labelsize=8)
-    fig = plt.gcf()
-    clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.2)
-    clb.set_ticks([color.min(),color.max() / 2, color.max()])
-    clb.set_ticklabels(['Low', 'Medium', 'High'], rotation = 45)
-    clb.ax.tick_params(labelsize=8)
-
-
 def create_3d_figure(df: pd.DataFrame, xyz_labels: list[str] = ["x", "y", "z"], predicted_class_array: np.ndarray = None, plot_changepoints: bool = True):
     fig = plt.figure(constrained_layout=False, figsize=(4, 4))
     ax = fig.add_subplot(projection="3d", computed_zorder=False)
@@ -499,9 +480,9 @@ def create_3d_figure(df: pd.DataFrame, xyz_labels: list[str] = ["x", "y", "z"], 
     if predicted_class_array is None:
         predicted_class_array = np.ones(X.shape[0])
         predicted_class_array[0] = 0
-    mt3scm_metric = mt3.mt3scm_score(X, predicted_class_array, standardize_subs_curve=True)
+    _ = mt3.mt3scm_score(X, predicted_class_array, standardize_subs_curve=True)
     kappa = np.log((np.abs(mt3.kappa_X * 1) + 1) ** 1)
-    ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=kappa, xyz_labels=xyz_labels, subplot_title=None)
+    helpers.ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=kappa, xyz_labels=xyz_labels, subplot_title=None)
     return fig
 
 
@@ -532,11 +513,11 @@ def plot_curvature_torsion_example():
     for subplots_index, (name, data) in enumerate(curv_data.items()):
         fig = plt.figure(constrained_layout=False, figsize=(4, 4))
         ax = fig.add_subplot(projection="3d", computed_zorder=False)
-        ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=data, line_scaling_factor=100)
+        helpers.ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=data, line_scaling_factor=100, set_ticks_and_labels=False, pad=0.0)
         plot_name = f"{name}.{GRAPHICS_FORMAT}"
         subplot_path = Path().cwd() / "plots"
         Path(subplot_path).mkdir(parents=True, exist_ok=True)
-        fig.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
+        fig.savefig(subplot_path / plot_name, pad_inches=0.01, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
         plt.close(fig)
 
 
