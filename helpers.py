@@ -50,7 +50,7 @@ def setupLogger(logging_file_path: Path = None, name: str = "jizzle", loglevel="
     return logger
 
 def set_plot_params():
-    sns.set_style("whitegrid")
+    # sns.set_style("whitegrid")
     plt.rcParams.update(
         {
             "text.usetex": True,
@@ -259,7 +259,7 @@ def generate_lorenz_attractor_data(dt: float = 0.005, num_steps: int = 3000):
         xs[i + 1] = xs[i] + (x_dot * dt)
         ys[i + 1] = ys[i] + (y_dot * dt)
         zs[i + 1] = zs[i] + (z_dot * dt)
-    data = np.array([xs, ys, zs * 10]).T
+    data = np.array([xs, ys, zs]).T
     feature_names = ["xs", "ys", "zs"]
     x_label, y_label, z_label = feature_names
     time_index = np.arange(start=0, stop=num_steps * dt, step=dt)
