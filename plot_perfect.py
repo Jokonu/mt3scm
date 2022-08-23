@@ -18,6 +18,11 @@ from sklearn.metrics import (
 # Own Libraries Import
 from helpers import gen_synth_data, set_plot_params
 from mt3scm import MT3SCM
+import helpers
+import string
+import pandas as pd
+from sklearn.cluster import DBSCAN, OPTICS, AgglomerativeClustering
+
 
 RESOLUTION_DPI = 300
 TRANSPARENT = False
@@ -36,10 +41,7 @@ def scatter_plot(X, ax, x_label, y_label, z_label, labels: np.ndarray, autorotat
     ax.set_ylabel(y_label)
     return ax
 
-def publication_plots():
-    import helpers
-    import string
-    import pandas as pd
+def publication_plot_metric_perfect():
     X, labels = gen_synth_data()
     mt3 = MT3SCM()
     kappa, tau, speed, acceleration = mt3.compute_curvature(X)
@@ -67,7 +69,7 @@ def publication_plots():
     n_x_subplots = 1
     fig_titles = string.ascii_lowercase[:n_x_subfigs]
     helpers.set_plot_params()
-    fig = plt.figure(1, constrained_layout=False, figsize=(4 * n_x_subfigs, 4 * n_y_subfigs))
+    fig = plt.figure(1, constrained_layout=False, figsize=(3 * n_x_subfigs, 3 * n_y_subfigs))
     # Create subfigures for connectivity and number of clusters
     subfigs = fig.subfigures(n_y_subfigs, n_x_subfigs, squeeze=True)
     idx = 0
@@ -79,6 +81,66 @@ def publication_plots():
         subfigs[subfig_index].suptitle(f"({fig_titles[subfig_index]})")
         ax = scatter_plot(data[subfig_index], axs, feat_names[subfig_index][0], feat_names[subfig_index][1], feat_names[subfig_index][2], y[subfig_index], autorotate_labels=False, marker_size=markers_size[subfig_index])
     plot_name = f"koehn7.pdf"
+    print(f"Saving plot with name: {plot_name}")
+    plt.figure(1)
+    plt.savefig(plot_name, dpi=300)
+    plt.close(1)
+
+def publication_plot_metric_agglom_example():
+    df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001, scale_zs=10.0)
+    X = df_lorenz.values
+    mt3 = MT3SCM(include_std_num_points=False)
+    kappa, tau, speed, acceleration = mt3.compute_curvature(X)
+    X_all_curve_params = np.array([acceleration, kappa, tau]).T
+    clustering = AgglomerativeClustering(n_clusters=10).fit(X_all_curve_params)
+    labels = clustering.labels_
+    mt3scm_metric = mt3.mt3scm_score(X, labels, edge_offset=0, n_min_subs=1)
+    labels_centers = mt3.df_centers.index.get_level_values("c_id")
+    labels_curve = mt3.df_curve.index.get_level_values("c_id")
+    print(f"Plotting koehn7..")
+    medians = mt3.df_centers.values
+    curves = mt3.df_curve.values
+    data = [X, medians, curves, X_all_curve_params]
+    y = [labels, labels_centers, labels_curve, labels]
+    feat_names = [
+        ["x", "y", "z"],
+        ["x", "y", "z"],
+        [r"$\overline{\kappa}$", r"$\overline{\tau}$", r"$\overline{a}$"],
+        [r"$\kappa$", r"$\tau$", r"$a$"],
+    ]
+    markers_size = [10, 100, 100, 100]
+    davies = davies_bouldin_score(X, labels)
+    calinski = calinski_harabasz_score(X, labels)
+    silhouette = silhouette_score(X, labels)
+    # subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}\n{davies=:.2n}, {calinski=:.2n}, {silhouette=:.2n}"
+    # plot_testing_results(X, mt3scm_metric, labels, "agglomerative_lorenz-feature-space-example")
+    # print(f"agglomerative_lorenz-feature-space-examples {subplot_title}")
+    # labels_centers = mt3.df_centers.index.get_level_values("c_id")
+    # plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "agglomerative_lorenz-feature-space-centers", marker_size=100, feature_names=mt3.df_centers.columns.to_list()[2:])
+    # labels_curve = mt3.df_curve.index.get_level_values("c_id")
+    # plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "agglomerative_lorenz-feature-space-curve-parameteres", marker_size=100, loc="best", feature_names=mt3.df_curve.columns.to_list()[2:])
+    # subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}"
+    # plot_testing_results(X_all_curve_params, mt3scm_metric, labels, "agglomerative_lorenz-feature-space-allcurve-params", marker_size=100, feature_names=["acceleration", "curvature", "torsion"], loc="best", subplot_title=subplot_title)
+    # print(f"agglomerative_lorenz-feature-space-allcurve-params {subplot_title}")
+
+    n_x_subfigs = 4
+    n_y_subfigs = 1
+    n_y_subplots = 1
+    n_x_subplots = 1
+    fig_titles = string.ascii_lowercase[:n_x_subfigs]
+    helpers.set_plot_params()
+    fig = plt.figure(1, constrained_layout=False, figsize=(4 * n_x_subfigs, 4 * n_y_subfigs))
+    # Create subfigures for connectivity and number of clusters
+    subfigs = fig.subfigures(n_y_subfigs, n_x_subfigs, squeeze=True)
+    idx = 0
+    result_index_names = ["max_n_sequences", "n_clusters", "min_seq_len", "max_seq_len"]
+    df_metrics = pd.DataFrame()
+    for subfig_index in range(n_x_subfigs * n_y_subfigs):
+        # Create subplots for all linkage variations
+        axs = subfigs[subfig_index].subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), squeeze=True)
+        subfigs[subfig_index].suptitle(f"({fig_titles[subfig_index]})")
+        ax = scatter_plot(data[subfig_index], axs, feat_names[subfig_index][0], feat_names[subfig_index][1], feat_names[subfig_index][2], y[subfig_index], autorotate_labels=False, marker_size=markers_size[subfig_index])
+    plot_name = f"koehn10.pdf"
     print(f"Saving plot with name: {plot_name}")
     plt.figure(1)
     plt.savefig(plot_name, dpi=300)
@@ -115,11 +177,6 @@ def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_n
     plt.close()
 
 def plot_agglomerative_lorenz_on_new_feature_space():
-    # Third Party Libraries Import
-    from sklearn.cluster import DBSCAN, OPTICS, AgglomerativeClustering
-
-    # Own Libraries Import
-    import helpers
     df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001)
     X = df_lorenz.values
     mt3 = MT3SCM()
@@ -135,9 +192,13 @@ def plot_agglomerative_lorenz_on_new_feature_space():
     subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}\n{davies=:.2n}, {calinski=:.2n}, {silhouette=:.2n}"
     plot_testing_results(X, mt3scm_metric, labels, "agglomerative_lorenz-feature-space-example")
     labels_centers = mt3.df_centers.index.get_level_values("c_id")
-    plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "agglomerative_lorenz-feature-space-centers", marker_size=100, feature_names=mt3.df_centers.columns.to_list()[2:])
+    feature_names = mt3.df_centers.columns.to_list()[2:]
+    # feature_names = mt3.df_centers.columns.to_list()
+    plot_testing_results(mt3.df_centers.values, mt3scm_metric, labels_centers, "agglomerative_lorenz-feature-space-centers", marker_size=100, feature_names=feature_names)
     labels_curve = mt3.df_curve.index.get_level_values("c_id")
-    plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "agglomerative_lorenz-feature-space-curve-parameteres", marker_size=100, loc="best", feature_names=mt3.df_curve.columns.to_list()[2:])
+    feature_names = mt3.df_curve.columns.to_list()[2:]
+    # feature_names = mt3.df_curve.columns.to_list()
+    plot_testing_results(mt3.df_curve.values, mt3scm_metric, labels_curve, "agglomerative_lorenz-feature-space-curve-parameteres", marker_size=100, loc="best", feature_names=feature_names)
     subplot_title = f"mt3scm={mt3scm_metric:.2n}\ncc={mt3.cc:.2n}, wcc={mt3.wcc:.2n},sl= {mt3.masc_pos:.2n}, sp={mt3.masc_kt:.2n}"
     plot_testing_results(X_all_curve_params, mt3scm_metric, labels, "agglomerative_lorenz-feature-space-allcurve-params", marker_size=100, feature_names=["acceleration", "curvature", "torsion"], loc="best", subplot_title=subplot_title)
     print(subplot_title)
@@ -269,7 +330,8 @@ def curvature(X: np.ndarray):
 
 
 if __name__ == "__main__":
-    publication_plots()
+    # publication_plot_metric_perfect()
+    publication_plot_metric_agglom_example()
     # generate_graphics_for_publication()
     # main()
     # plot_agglomerative_lorenz_on_new_feature_space()

@@ -258,7 +258,7 @@ def generate_thomas_attractor_data(dt: float = 1, num_steps: int = 2000, b: floa
     return pd.DataFrame(data, columns=["xs", "ys", "zs"])
 
 
-def generate_lorenz_attractor_data(dt: float = 0.005, num_steps: int = 3000):
+def generate_lorenz_attractor_data(dt: float = 0.005, num_steps: int = 3000, scale_zs: float = 1.0):
     def lorenz(x, y, z, s=10, r=28, b=2.667):
         x_dot = s * (y - x)
         y_dot = r * x - y - x * z
@@ -285,7 +285,7 @@ def generate_lorenz_attractor_data(dt: float = 0.005, num_steps: int = 3000):
         xs[i + 1] = xs[i] + (x_dot * dt)
         ys[i + 1] = ys[i] + (y_dot * dt)
         zs[i + 1] = zs[i] + (z_dot * dt)
-    data = np.array([xs, ys, zs]).T
+    data = np.array([xs, ys, zs*scale_zs]).T
     feature_names = ["xs", "ys", "zs"]
     x_label, y_label, z_label = feature_names
     time_index = np.arange(start=0, stop=num_steps * dt, step=dt)

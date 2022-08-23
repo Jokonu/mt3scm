@@ -503,13 +503,35 @@ def plot_curvature_torsion_example():
     X = StandardScaler().fit_transform(df_thomas.values)
     mt3 = MT3SCM()
     kappa, tau, speed, acceleration = mt3.compute_curvature(X)
-    curv_data = [kappa, tau]
     curv_data = {
         "Curvature": kappa,
         "Torsion": tau,
         "Speed": speed,
         "Acceleration": acceleration,
     }
+    # Plot all in one figure
+    n_x_subfigs = 4
+    n_y_subfigs = 1
+    n_y_subplots = 1
+    n_x_subplots = 1
+    fig_titles = string.ascii_lowercase[:n_x_subfigs]
+    helpers.set_plot_params()
+    fig = plt.figure(1, constrained_layout=True, figsize=(4 * n_x_subfigs, 4 * n_y_subfigs))
+    # Create subfigures for connectivity and number of clusters
+    subfigs = fig.subfigures(n_y_subfigs, n_x_subfigs, squeeze=True)
+    idx = 0
+    result_index_names = ["max_n_sequences", "n_clusters", "min_seq_len", "max_seq_len"]
+    df_metrics = pd.DataFrame()
+    for subfig_index, (name, data) in enumerate(curv_data.items()):
+        axs = subfigs[subfig_index].subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), squeeze=True)
+        subfigs[subfig_index].suptitle(f"({fig_titles[subfig_index]})")
+        helpers.ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], axs, kappa=data, line_scaling_factor=100, set_ticks_and_labels=False, pad=0.0)
+    plot_name = f"koehn3.pdf"
+    print(f"Saving plot with name: {plot_name}")
+    plt.figure(1)
+    plt.savefig(plot_name, dpi=300)
+    plt.close(1)
+    # Plot single figures
     for subplots_index, (name, data) in enumerate(curv_data.items()):
         fig = plt.figure(constrained_layout=False, figsize=(4, 4))
         ax = fig.add_subplot(projection="3d", computed_zorder=False)
@@ -519,7 +541,6 @@ def plot_curvature_torsion_example():
         Path(subplot_path).mkdir(parents=True, exist_ok=True)
         fig.savefig(subplot_path / plot_name, pad_inches=0.01, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
         plt.close(fig)
-
 
 if __name__ == "__main__":
     # Standard Libraries Import
@@ -558,8 +579,8 @@ if __name__ == "__main__":
         plot_one_example()
     if args.curve is True:
         print(f"Plotting curvature torsion example..")
-        plot_lorenz_attractor_3d()
         plot_curvature_torsion_example()
+        plot_lorenz_attractor_3d()
     if args.kmeans is True:
         print(f"Plotting examples for kmeans..")
         plot_examples(algorithms=["kmeans"])

@@ -370,13 +370,8 @@ class MT3SCM:
                 ),
                 columns=column_names,
             )
-            self.df_centers = pd.DataFrame(
-                cluster_center_data[:, 4:].T.astype("int"),
-                index=pd.MultiIndex.from_arrays(
-                    cluster_center_data[:, 0:4].T, names=["c_id", "s_id", "std", "n_p"]
-                ),
-                columns=[f"x{i}" for i in range(cluster_center_data[:, 2:].shape[1])],
-            )
+            cols = [f"x{i}" for i in range(cluster_center_data[:, 4:].shape[1])]
+            self.df_centers = pd.DataFrame(cluster_center_data[:, 4:],index=pd.MultiIndex.from_arrays(cluster_center_data[:, 0:4].T.astype("int"), names=["c_id", "s_id", "std", "n_p"]),columns=cols)
         elif self.include_std_num_points is True:
             self.df_curve = pd.DataFrame(
                 cluster_curve_data[:, 2:],
