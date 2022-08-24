@@ -13,6 +13,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import cm
+from matplotlib import cm
+from matplotlib.ticker import StrMethodFormatter
 from matplotlib.colors import Normalize
 from sklearn.metrics import (
     calinski_harabasz_score,
@@ -100,6 +102,9 @@ def ax_scatter_3d(
     plot_changepoints: bool = False,
     alpha=0.3,
     remove_ticks: bool = True,
+    fontsize: int=10,
+    set_ticks_and_labels: bool = True,
+    xyz_labels: list[str] = ["x", "y", "z"]
 ):
     if marker_size_array is not None:
         marker_size = marker_size_array
@@ -123,17 +128,22 @@ def ax_scatter_3d(
     scat = ax.scatter(X, Y, Z, c=labels, cmap=cmap, s=marker_size, marker=marker, norm=norm)
     fig = plt.gcf()
     clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.2)
-    clb.ax.set_title("Cluster ID", fontsize=10)
+    clb.ax.set_title("Cluster", fontsize=fontsize)
     if n_unique_labels < 11:
         tick_locs = np.arange(n_unique_labels) + 0.5
         clb.set_ticks(tick_locs)
         clb.set_ticklabels(np.arange(n_unique_labels))
-    ax.set_title(subplot_title, fontsize=10)
+    if set_ticks_and_labels is True:
+        ax.set_xlabel(f"{xyz_labels[0]}")
+        ax.set_ylabel(f"{xyz_labels[1]}")
+        ax.set_zlabel(f"{xyz_labels[2]}")
+        ax.tick_params(labelsize=8)
+    ax.set_title(subplot_title, fontsize=fontsize)
     # ax.legend(fontsize=8)
 
 
-def calc_unsupervised_metrics(X, label_array, edge_offset: int = 3, n_min_subs: int = 2):
-    mt3 = MT3SCM()
+def calc_unsupervised_metrics(X, label_array, edge_offset: int = 3, n_min_subs: int = 2, include_std_num_points: bool = True):
+    mt3 = MT3SCM(include_std_num_points=include_std_num_points)
     mt3scm_metric = mt3.mt3scm_score(X, label_array, edge_offset=edge_offset, n_min_subs=n_min_subs)
     metrics_dict = {}
     metrics_dict["mt3scm"] = mt3scm_metric
@@ -520,7 +530,7 @@ def annotate_heatmap(
 
     # Get the formatter in case a string is supplied
     if isinstance(valfmt, str):
-        valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+        valfmt = StrMethodFormatter(valfmt)
 
     # Loop over the data and create a `Text` for each "pixel".
     # Change the text's color depending on the data.

@@ -33,6 +33,70 @@ TRANSPARENT = False
 GRAPHICS_FORMAT = "pdf"  # or png, pdf, svg
 
 
+def publication_plot_random_examples():
+    # Get lorenz attractor data as dataframe
+    df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001)
+    # Get thomas attractor data as dataframe
+    df_thomas = helpers.generate_thomas_attractor_data(dt=0.05, num_steps=10000, b=0.1)
+    n_y_subplots = 1
+    n_x_subplots = 4
+    fig_titles = string.ascii_lowercase[:(n_y_subplots * n_x_subplots)]
+    helpers.set_plot_params()
+    # textwidth of two column paper: 17.75cm
+    cm = 1/2.54
+    fig, axs = plt.subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), constrained_layout=True, figsize=(17.75*cm*n_x_subplots/2, 17.75*cm*n_y_subplots/2), squeeze=False)
+    # plt.subplots_adjust(wspace=0.2,hspace=0.2)
+    min_max_seq_len = [(1, 2), (100, 500), (1, 2), (100, 500)]
+    feat_names = ["x", "y", "z"]
+    data = [df_lorenz.values, df_lorenz.values, df_thomas.values, df_thomas.values]
+    for s_i, ax in enumerate(axs.flat):
+        X = data[s_i]
+        min_seq_len = min_max_seq_len[s_i][0]
+        max_seq_len = min_max_seq_len[s_i][1]
+        n_c = 2
+        y = helpers.generate_random_sequences(length=X.shape[0], min_seq_length=min_seq_len, max_seq_length=max_seq_len, number_of_sequences=n_c)
+        metrics, kappa_X, tau_X = helpers.calc_unsupervised_metrics(X, y, edge_offset=5, n_min_subs=1)
+        print(f"Plotted plot {fig_titles[s_i]} with metrics davies-bouldin: {metrics['davies']:.2n}, calinski-harabasz: {metrics['calinski']:.2n}, silhouette: {metrics['silhouette']:.2n}, mt3scm: {metrics['mt3scm']:.2n}, cc={metrics['cc']:.2n}, wcc={metrics['wcc']:.2n},sl= {metrics['sl']:.2n}, sp={metrics['sp']:.2n}")
+        marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
+        print(f"Drawing random example {n_c=} {min_seq_len=} {max_seq_len=} mt3scm={metrics['mt3scm']:.3f}")
+        helpers.ax_scatter_3d( X[:, 0], X[:, 1], X[:, 2], ax, labels=y, subplot_title=f"({fig_titles[s_i]})", marker_size_array=marker_sizes, fontsize=8, set_ticks_and_labels=True)
+    plot_name = f"koehn15.pdf"
+    print(f"Saving plot with name: {plot_name}")
+    plt.figure(1)
+    plt.savefig(plot_name, dpi=300, bbox_inches='tight')
+    plt.close(1)
+
+def publication_plot_agglomerative_examples():
+    # Get lorenz attractor data as dataframe
+    df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001, scale_zs=1)
+    n_y_subplots = 1
+    n_x_subplots = 4
+    fig_titles = string.ascii_lowercase[:(n_y_subplots * n_x_subplots)]
+    helpers.set_plot_params()
+    # textwidth of two column paper: 17.75cm
+    cm = 1/2.54
+    fig, axs = plt.subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), constrained_layout=True, figsize=(17.75*cm*n_x_subplots/2, 17.75*cm*n_y_subplots/2), squeeze=False)
+    linkages = ["average", "ward", "average", "ward"]
+    n_cs = [4, 4, 10, 50]
+    X = df_lorenz.values
+    for s_i, ax in enumerate(axs.flat):
+        linkage = linkages[s_i]
+        n_c = n_cs[s_i]
+        agc_model = AgglomerativeClustering(linkage=linkage, connectivity=None, n_clusters=n_c)
+        X_scaled = StandardScaler().fit_transform(X)
+        agc_model.fit(X_scaled)
+        y = agc_model.labels_
+        metrics, kappa_X, tau_X = helpers.calc_unsupervised_metrics(X, y, edge_offset=5, n_min_subs=1, include_std_num_points=True)
+        print(f"Plotted plot {fig_titles[s_i]} with metrics davies-bouldin: {metrics['davies']:.2n}, calinski-harabasz: {metrics['calinski']:.2n}, silhouette: {metrics['silhouette']:.2n}, mt3scm: {metrics['mt3scm']:.2n}, cc={metrics['cc']:.2n}, wcc={metrics['wcc']:.2n},sl= {metrics['sl']:.2n}, sp={metrics['sp']:.2n}")
+        marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
+        print(f"Drawing random example {n_c=} {linkage=} mt3scm={metrics['mt3scm']:.3f}")
+        helpers.ax_scatter_3d( X[:, 0], X[:, 1], X[:, 2], ax, labels=y, subplot_title=f"({fig_titles[s_i]})", marker_size_array=marker_sizes, fontsize=8, set_ticks_and_labels=True)
+    plot_name = f"koehn19.pdf"
+    print(f"Saving plot with name: {plot_name}")
+    plt.figure(1)
+    plt.savefig(plot_name, dpi=300, bbox_inches='tight')
+    plt.close(1)
+
 def plot_random_examples(
     X: np.ndarray, dataset_name: str = "", n_clusters: list[int] = [2, 4, 10, 50, 200]
 ):
@@ -576,7 +640,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
     if args.one is True:
         print(f"Plotting a single example only..")
-        plot_one_example()
+        # plot_one_example()
+        publication_plot_agglomerative_examples()
+        # publication_plot_random_examples()
     if args.curve is True:
         print(f"Plotting curvature torsion example..")
         plot_curvature_torsion_example()
@@ -593,4 +659,5 @@ if __name__ == "__main__":
     if args.short is True:
         print(f"Plotting one short example..")
         plot_examples(algorithms=["shortrandom"])
+    publication_plot_agglomerative_examples()
     print(f"Done")
