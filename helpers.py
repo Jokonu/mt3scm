@@ -55,12 +55,12 @@ def set_plot_params():
         {
             "text.usetex": True,
             "font.family": "serif",
+            "font.size": 8,
             "font.sans-serif": ["Computer Modern Roman"],
             "axes.grid": False,
             "image.cmap": cm.get_cmap("viridis")
         }
     )
-
 
 def ax_scatter_3d_original(X, Y, Z, ax, kappa: np.ndarray, xyz_labels: list[str] = ["x", "y", "z"], subplot_title: str = None, marker_size: float = 0.8, marker_size_array=None, marker="o", plot_changepoints: bool = True, alpha=0.3, line_scaling_factor: float = 1.0, set_ticks_and_labels: bool = True, pad: float=0.2):
     cmap = cm.get_cmap("viridis")
@@ -132,9 +132,9 @@ def ax_scatter_3d(
     # ax.legend(fontsize=8)
 
 
-def calc_unsupervised_metrics(X, label_array, edge_offset: int = 3):
+def calc_unsupervised_metrics(X, label_array, edge_offset: int = 3, n_min_subs: int = 2):
     mt3 = MT3SCM()
-    mt3scm_metric = mt3.mt3scm_score(X, label_array, edge_offset=edge_offset)
+    mt3scm_metric = mt3.mt3scm_score(X, label_array, edge_offset=edge_offset, n_min_subs=n_min_subs)
     metrics_dict = {}
     metrics_dict["mt3scm"] = mt3scm_metric
     metrics_dict["wcc"] = mt3.wcc
