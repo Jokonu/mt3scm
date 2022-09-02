@@ -41,7 +41,7 @@ def scatter_plot(X, ax, x_label, y_label, z_label, labels: np.ndarray, autorotat
     ax.set_ylabel(y_label)
     return ax
 
-def publication_plot_metric_perfect():
+def publication_plot_metric_perfect(plot_name: str = "metric_feature_space", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
     X, labels = gen_synth_data()
     mt3 = MT3SCM()
     kappa, tau, speed, acceleration = mt3.compute_curvature(X)
@@ -52,7 +52,7 @@ def publication_plot_metric_perfect():
     mt3scm_metric = mt3.mt3scm_score(X, labels, edge_offset=5)
     labels_centers = mt3.df_centers.index.get_level_values("c_id")
     labels_curve = mt3.df_curve.index.get_level_values("c_id")
-    print(f"Plotting koehn7..")
+    print(f"Plotting {plot_name}..")
     medians = mt3.df_centers.values
     curves = mt3.df_curve.values
     data = [X, medians, curves]
@@ -79,13 +79,20 @@ def publication_plot_metric_perfect():
         axs = subfigs[subfig_index].subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), squeeze=True)
         subfigs[subfig_index].suptitle(f"({fig_titles[subfig_index]})", fontsize=8)
         ax = scatter_plot(data[subfig_index], axs, feat_names[subfig_index][0], feat_names[subfig_index][1], feat_names[subfig_index][2], y[subfig_index], autorotate_labels=False, marker_size=markers_size[subfig_index])
-    plot_name = f"koehn7.pdf"
     print(f"Saving plot with name: {plot_name}")
+    subplot_path = Path().cwd() / "plots"
+    Path(subplot_path).mkdir(parents=True, exist_ok=True)
     plt.figure(1)
-    plt.savefig(plot_name, dpi=300)
+    plt.savefig(
+        subplot_path / str(plot_name + "." + graphics_format),
+        bbox_inches="tight",
+        transparent=TRANSPARENT,
+        dpi=resolution_dpi,
+        format=graphics_format
+    )
     plt.close(1)
 
-def publication_plot_metric_agglom_example():
+def publication_plot_metric_agglom_example(plot_name: str = "metric_lorenz_feature_space", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
     df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001, scale_zs=10.0)
     X = df_lorenz.values
     mt3 = MT3SCM(include_std_num_points=False)
@@ -96,7 +103,7 @@ def publication_plot_metric_agglom_example():
     _ = mt3.mt3scm_score(X, labels, edge_offset=0, n_min_subs=1)
     labels_centers = mt3.df_centers.index.get_level_values("c_id")
     labels_curve = mt3.df_curve.index.get_level_values("c_id")
-    print(f"Plotting koehn10..")
+    print(f"Plotting {plot_name}..")
     medians = mt3.df_centers.values
     curves = mt3.df_curve.values
     data = [X_all_curve_params, X, curves, medians]
@@ -122,11 +129,17 @@ def publication_plot_metric_agglom_example():
         ax = scatter_plot(data[s_i], ax, feat_names[s_i][0], feat_names[s_i][1], feat_names[s_i][2], y[s_i], autorotate_labels=False, marker_size=markers_size[s_i])
         ax.set_title(f"({fig_titles[s_i]})", fontsize=8)
         ax.tick_params(labelsize=8)
-    plot_name = f"koehn10.pdf"
     print(f"Saving plot with name: {plot_name}")
+    subplot_path = Path().cwd() / "plots"
+    Path(subplot_path).mkdir(parents=True, exist_ok=True)
     plt.figure(1)
-    # plt.tight_layout(h_pad=8)
-    plt.savefig(plot_name, dpi=300, bbox_inches='tight')
+    plt.savefig(
+        subplot_path / str(plot_name + "." + graphics_format),
+        bbox_inches="tight",
+        transparent=TRANSPARENT,
+        dpi=resolution_dpi,
+        format=graphics_format
+    )
     plt.close(1)
 
 def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_name: str, marker_size:float=10.0, fig_suptitle:str=None, subplot_title:str=None, loc:str="best", legend_title:str="Cluster", feature_names:list[str]=["x", "y", "z"], autorotate_labels: bool =True):

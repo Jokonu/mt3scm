@@ -18,7 +18,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib import cm
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.neighbors import kneighbors_graph
 from sklearn.preprocessing import StandardScaler
@@ -33,13 +32,13 @@ TRANSPARENT = False
 GRAPHICS_FORMAT = "pdf"  # or png, pdf, svg
 
 
-def publication_plot_random_examples():
+def publication_plot_random_examples(plot_name: str = "metric_random", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
     # Get lorenz attractor data as dataframe
     df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001)
     # Get thomas attractor data as dataframe
     df_thomas = helpers.generate_thomas_attractor_data(dt=0.05, num_steps=10000, b=0.1)
-    n_y_subplots = 1
-    n_x_subplots = 4
+    n_y_subplots = 2
+    n_x_subplots = 2
     fig_titles = string.ascii_lowercase[:(n_y_subplots * n_x_subplots)]
     helpers.set_plot_params()
     # textwidth of two column paper: 17.75cm
@@ -49,6 +48,7 @@ def publication_plot_random_examples():
     min_max_seq_len = [(1, 2), (100, 500), (1, 2), (100, 500)]
     feat_names = ["x", "y", "z"]
     data = [df_lorenz.values, df_lorenz.values, df_thomas.values, df_thomas.values]
+    df_mets = pd.DataFrame()
     for s_i, ax in enumerate(axs.flat):
         X = data[s_i]
         min_seq_len = min_max_seq_len[s_i][0]
@@ -60,17 +60,32 @@ def publication_plot_random_examples():
         marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
         print(f"Drawing random example {n_c=} {min_seq_len=} {max_seq_len=} mt3scm={metrics['mt3scm']:.3f}")
         helpers.ax_scatter_3d( X[:, 0], X[:, 1], X[:, 2], ax, labels=y, subplot_title=f"({fig_titles[s_i]})", marker_size_array=marker_sizes, fontsize=8, set_ticks_and_labels=True)
-    plot_name = f"koehn15.pdf"
+        df_mets = pd.concat([df_mets, pd.DataFrame(metrics, index=[fig_titles[s_i]])])
+    cols = ["davies", "calinski", "silhouette", "mt3scm", "cc", "wcc", "sl", "sp"]
+    df_mets = df_mets[cols]
+    la_style = df_mets.style
+    la_style = la_style.format('{:.2G}')
+    la_style.to_latex(f"{plot_name}.tex")
+    print(f"mets: \n{df_mets}")
     print(f"Saving plot with name: {plot_name}")
+    subplot_path = Path().cwd() / "plots"
+    Path(subplot_path).mkdir(parents=True, exist_ok=True)
     plt.figure(1)
-    plt.savefig(plot_name, dpi=300, bbox_inches='tight')
+    plt.savefig(
+        subplot_path / str(plot_name + "." + graphics_format),
+        pad_inches=0,
+        bbox_inches="tight",
+        transparent=TRANSPARENT,
+        dpi=resolution_dpi,
+        format=graphics_format
+    )
     plt.close(1)
 
-def publication_plot_agglomerative_examples():
+def publication_plot_agglomerative_examples(plot_name: str = "metric_agglomerative", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
     # Get lorenz attractor data as dataframe
     df_lorenz = helpers.generate_lorenz_attractor_data(dt=0.005, num_steps=3001, scale_zs=1)
-    n_y_subplots = 1
-    n_x_subplots = 4
+    n_y_subplots = 2
+    n_x_subplots = 2
     fig_titles = string.ascii_lowercase[:(n_y_subplots * n_x_subplots)]
     helpers.set_plot_params()
     # textwidth of two column paper: 17.75cm
@@ -79,6 +94,7 @@ def publication_plot_agglomerative_examples():
     linkages = ["average", "ward", "average", "ward"]
     n_cs = [4, 4, 10, 50]
     X = df_lorenz.values
+    df_mets = pd.DataFrame()
     for s_i, ax in enumerate(axs.flat):
         linkage = linkages[s_i]
         n_c = n_cs[s_i]
@@ -91,10 +107,24 @@ def publication_plot_agglomerative_examples():
         marker_sizes = np.log((np.abs(kappa_X * tau_X * 100) + 1) ** 2)
         print(f"Drawing random example {n_c=} {linkage=} mt3scm={metrics['mt3scm']:.3f}")
         helpers.ax_scatter_3d( X[:, 0], X[:, 1], X[:, 2], ax, labels=y, subplot_title=f"({fig_titles[s_i]})", marker_size_array=marker_sizes, fontsize=8, set_ticks_and_labels=True)
-    plot_name = f"koehn19.pdf"
+        df_mets = pd.concat([df_mets, pd.DataFrame(metrics, index=[fig_titles[s_i]])])
+    cols = ["davies", "calinski", "silhouette", "mt3scm", "cc", "wcc", "sl", "sp"]
+    df_mets = df_mets[cols]
+    la_style = df_mets.style
+    la_style = la_style.format('{:.2G}')
+    la_style.to_latex(f"{plot_name}.tex")
     print(f"Saving plot with name: {plot_name}")
+    subplot_path = Path().cwd() / "plots"
+    Path(subplot_path).mkdir(parents=True, exist_ok=True)
     plt.figure(1)
-    plt.savefig(plot_name, dpi=300, bbox_inches='tight')
+    plt.savefig(
+        subplot_path / str(plot_name + "." + graphics_format),
+        pad_inches=0,
+        bbox_inches="tight",
+        transparent=TRANSPARENT,
+        dpi=resolution_dpi,
+        format=graphics_format
+    )
     plt.close(1)
 
 def plot_random_examples(
@@ -501,8 +531,7 @@ def plot_examples(algorithms: list[str] = ["agglomerative", "random", "kmeans", 
     df_thomas = helpers.generate_thomas_attractor_data(dt=0.05, num_steps=10000, b=0.1)
     # Get Synthetic dataset
     X_synth, labels_synth = helpers.gen_synth_data()
-    # datasets = {"lorenz": df_lorenz.values, "thomas": df_thomas.values, "synthetic": X_synth}
-    datasets = {"synthetic": X_synth}
+    datasets = {"lorenz": df_lorenz.values, "thomas": df_thomas.values, "synthetic": X_synth}
     n_clusters = [2, 4, 10, 50, 200]
     for name, data in datasets.items():
         if "agglomerative" in algorithms:
@@ -550,18 +579,26 @@ def create_3d_figure(df: pd.DataFrame, xyz_labels: list[str] = ["x", "y", "z"], 
     return fig
 
 
-def plot_lorenz_attractor_3d():
+def plot_lorenz_attractor_3d(plot_name: str = "lorenz-attractor-3d", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
     df = helpers.generate_lorenz_attractor_data()
     helpers.set_plot_params()
     fig = create_3d_figure(df)
-    plot_name = str("lorenz-attractor-3d." + GRAPHICS_FORMAT)
     subplot_path = Path().cwd() / "plots"
     Path(subplot_path).mkdir(parents=True, exist_ok=True)
-    fig.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
+    plt.savefig(
+        subplot_path / str(plot_name + "." + graphics_format),
+        pad_inches=0,
+        bbox_inches="tight",
+        transparent=TRANSPARENT,
+        dpi=resolution_dpi,
+        format=graphics_format
+    )
+    # fig.savefig(subplot_path / plot_name, pad_inches=0, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
     plt.close(fig)
+    print(f"Saving plot with name: {plot_name}")
 
 
-def plot_curvature_torsion_example():
+def plot_curvature_torsion_example(plot_name: str = "qualitative_curve_parameters", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
     helpers.set_plot_params()
     df_thomas = helpers.generate_thomas_attractor_data(dt=0.05, num_steps=500, b=0.1)
     X = StandardScaler().fit_transform(df_thomas.values)
@@ -573,38 +610,38 @@ def plot_curvature_torsion_example():
         "Speed": speed,
         "Acceleration": acceleration,
     }
-    # Plot all in one figure
-    n_x_subfigs = 4
-    n_y_subfigs = 1
-    n_y_subplots = 1
-    n_x_subplots = 1
-    fig_titles = string.ascii_lowercase[:n_x_subfigs]
+    n_y_subplots = 2
+    n_x_subplots = 2
+    fig_titles = string.ascii_lowercase[:(n_y_subplots * n_x_subplots)]
     helpers.set_plot_params()
-    fig = plt.figure(1, constrained_layout=True, figsize=(4 * n_x_subfigs, 4 * n_y_subfigs))
-    # Create subfigures for connectivity and number of clusters
-    subfigs = fig.subfigures(n_y_subfigs, n_x_subfigs, squeeze=True)
-    idx = 0
-    result_index_names = ["max_n_sequences", "n_clusters", "min_seq_len", "max_seq_len"]
-    df_metrics = pd.DataFrame()
-    for subfig_index, (name, data) in enumerate(curv_data.items()):
-        axs = subfigs[subfig_index].subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), squeeze=True)
-        subfigs[subfig_index].suptitle(f"({fig_titles[subfig_index]})")
-        helpers.ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], axs, kappa=data, line_scaling_factor=100, set_ticks_and_labels=False, pad=0.0)
-    plot_name = f"koehn3.pdf"
+    # idx = 0
+    # result_index_names = ["max_n_sequences", "n_clusters", "min_seq_len", "max_seq_len"]
+    cm = 1/2.54
+    fig, axs = plt.subplots(n_y_subplots, n_x_subplots, subplot_kw=dict(projection="3d"), constrained_layout=True, figsize=(17.75*cm*n_x_subplots/2, 17.75*cm*n_y_subplots/2), squeeze=False)
+    for s_i, (ax, (name, data)) in enumerate(zip(axs.flat, curv_data.items())):
+        helpers.ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=data, line_scaling_factor=100, set_ticks_and_labels=False, pad=0.0, subplot_title=f"({fig_titles[s_i]})")
     print(f"Saving plot with name: {plot_name}")
+    subplot_path = Path().cwd() / "plots"
+    Path(subplot_path).mkdir(parents=True, exist_ok=True)
     plt.figure(1)
-    plt.savefig(plot_name, dpi=300)
+    plt.savefig(
+        subplot_path / str(plot_name + "." + graphics_format),
+        bbox_inches="tight",
+        transparent=TRANSPARENT,
+        dpi=resolution_dpi,
+        format=graphics_format
+    )
     plt.close(1)
     # Plot single figures
-    for subplots_index, (name, data) in enumerate(curv_data.items()):
-        fig = plt.figure(constrained_layout=False, figsize=(4, 4))
-        ax = fig.add_subplot(projection="3d", computed_zorder=False)
-        helpers.ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=data, line_scaling_factor=100, set_ticks_and_labels=False, pad=0.0)
-        plot_name = f"{name}.{GRAPHICS_FORMAT}"
-        subplot_path = Path().cwd() / "plots"
-        Path(subplot_path).mkdir(parents=True, exist_ok=True)
-        fig.savefig(subplot_path / plot_name, pad_inches=0.01, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
-        plt.close(fig)
+    # for subplots_index, (name, data) in enumerate(curv_data.items()):
+    #     fig = plt.figure(constrained_layout=False, figsize=(4, 4))
+    #     ax = fig.add_subplot(projection="3d", computed_zorder=False)
+    #     helpers.ax_scatter_3d_original(X[:, 0], X[:, 1], X[:, 2], ax, kappa=data, line_scaling_factor=100, set_ticks_and_labels=False, pad=0.0)
+    #     plot_name = f"{name}.{GRAPHICS_FORMAT}"
+    #     subplot_path = Path().cwd() / "plots"
+    #     Path(subplot_path).mkdir(parents=True, exist_ok=True)
+    #     fig.savefig(subplot_path / plot_name, pad_inches=0.01, bbox_inches="tight", transparent=TRANSPARENT, dpi=RESOLUTION_DPI, format=GRAPHICS_FORMAT)
+    #     plt.close(fig)
 
 if __name__ == "__main__":
     # Standard Libraries Import
@@ -659,5 +696,5 @@ if __name__ == "__main__":
     if args.short is True:
         print(f"Plotting one short example..")
         plot_examples(algorithms=["shortrandom"])
-    publication_plot_agglomerative_examples()
+    # publication_plot_agglomerative_examples()
     print(f"Done")

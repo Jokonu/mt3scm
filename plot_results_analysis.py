@@ -87,7 +87,7 @@ def analyse_metrics():
     plt.close()
 
 
-def analyse_correlation():
+def analyse_correlation(plot_name: str = "ClusterMetricsCorrelation", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
     set_plot_style()
     df = load_results_into_dataframe()
     df_corr = df.corr()
@@ -107,7 +107,16 @@ def analyse_correlation():
     )
     texts = helpers.annotate_heatmap(im, valfmt="{x:.1f}")
     plt.tight_layout()
-    plt.savefig(f"ClusterMetricsCorrelation.png", bbox_inches="tight")
+    subplot_path = Path().cwd() / "plots"
+    Path(subplot_path).mkdir(parents=True, exist_ok=True)
+    plt.savefig(
+        subplot_path / str(plot_name + "." + graphics_format),
+        pad_inches=0,
+        bbox_inches="tight",
+        transparent=TRANSPARENT,
+        dpi=resolution_dpi,
+        format=graphics_format
+    )
     plt.close()
 
 

@@ -98,7 +98,7 @@ class MT3SCM:
         eps: float = 1e-5,
         include_speed_acceleration: bool = False,
         include_acceleration: bool = True,
-        include_std_num_points: bool = True,
+        include_std_num_points: bool = False,
         weigh_metrics_on_n_points: bool = True,
         weigh_metrics_on_curve_std: bool = False,
         distance_fn: str = "manhatten",
