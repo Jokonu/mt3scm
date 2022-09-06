@@ -126,7 +126,7 @@ def test_helix():
     labels = np.concatenate([label, label2])
     X = np.stack((xs, ys, zs)).T
     score = mt3scm_score(X, labels)
-    score_expected: float = 0.15
+    score_expected: float = 0.25
     np.testing.assert_allclose(score, score_expected, atol=5e-2)
 
 # def test_helix2():
@@ -193,8 +193,8 @@ def test_curvature():
     X = np.stack((x_all, y_all, x_all)).T
     score = mt3scm_score(X, labels)
     # plot_testing_results(X, score, labels, inspect.currentframe().f_code.co_name)
-    score_expected: float = -0.15
-    np.testing.assert_allclose(score, score_expected, atol=1e-2)
+    score_expected: float = 0.1
+    np.testing.assert_allclose(score, score_expected, atol=1e-1)
 
 def test_normalize():
     X = np.random.random((10000, 3))
@@ -203,7 +203,7 @@ def test_normalize():
     labels = np.concatenate((y1, y2), axis=0)
     score = mt3scm_score(X, labels, standardize_subs_curve=False)
     # plot_testing_results(X, score, labels, inspect.currentframe().f_code.co_name)
-    score_expected: float = -0.55
+    score_expected: float = -0.05
     np.testing.assert_allclose(score, score_expected, atol=1e-1)
 
 def test_standardize():
@@ -213,7 +213,7 @@ def test_standardize():
     labels = np.concatenate((y1, y2), axis=0)
     score = mt3scm_score(X, labels, standardize_subs_curve=True)
     # plot_testing_results(X, score, labels, inspect.currentframe().f_code.co_name)
-    score_expected: float = -0.33
+    score_expected: float = 0
     np.testing.assert_allclose(score, score_expected, atol=1e-2)
 
 def test_constant_values():

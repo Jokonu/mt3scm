@@ -29,7 +29,7 @@ from mt3scm import MT3SCM
 
 RESOLUTION_DPI = 300
 TRANSPARENT = False
-GRAPHICS_FORMAT = "pdf"  # or png, pdf, svg
+GRAPHICS_FORMAT = "png"  # or png, pdf, svg
 
 
 def publication_plot_random_examples(plot_name: str = "metric_random", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):

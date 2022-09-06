@@ -89,6 +89,7 @@ def analyse_metrics():
 
 def analyse_correlation(plot_name: str = "ClusterMetricsCorrelation", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
     set_plot_style()
+    # helpers.set_plot_params()
     df = load_results_into_dataframe()
     df_corr = df.corr()
     A = df_corr.values

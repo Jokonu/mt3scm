@@ -13,9 +13,8 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from matplotlib import cm
-from matplotlib import cm
-from matplotlib.ticker import StrMethodFormatter
 from matplotlib.colors import Normalize
+from matplotlib.ticker import StrMethodFormatter
 from sklearn.metrics import (
     calinski_harabasz_score,
     davies_bouldin_score,

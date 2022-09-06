@@ -4,11 +4,14 @@
 # License: BSD 3 clause
 
 # Standard Libraries Import
+import string
 from pathlib import Path
 
 # Third Party Libraries Import
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+from sklearn.cluster import DBSCAN, OPTICS, AgglomerativeClustering
 from sklearn.metrics import (
     calinski_harabasz_score,
     davies_bouldin_score,
@@ -16,17 +19,12 @@ from sklearn.metrics import (
 )
 
 # Own Libraries Import
-from helpers import gen_synth_data, set_plot_params
-from mt3scm import MT3SCM
 import helpers
-import string
-import pandas as pd
-from sklearn.cluster import DBSCAN, OPTICS, AgglomerativeClustering
-
+from mt3scm import MT3SCM
 
 RESOLUTION_DPI = 300
 TRANSPARENT = False
-GRAPHICS_FORMAT = "pdf"  # or png, pdf, svg
+GRAPHICS_FORMAT = "png"  # or png, pdf, svg
 
 def scatter_plot(X, ax, x_label, y_label, z_label, labels: np.ndarray, autorotate_labels: bool = True, subplot_title: str = None, loc:str="best", marker_size:float=10.0, legend_title:str="Cluster", framealpha:float = 0.6):
     scatter = ax.scatter(X[:, 0], X[:, 1], X[:, 2], c=labels, s=marker_size)
@@ -42,7 +40,7 @@ def scatter_plot(X, ax, x_label, y_label, z_label, labels: np.ndarray, autorotat
     return ax
 
 def publication_plot_metric_perfect(plot_name: str = "metric_feature_space", graphics_format: str = GRAPHICS_FORMAT, resolution_dpi: int = RESOLUTION_DPI):
-    X, labels = gen_synth_data()
+    X, labels = helpers.gen_synth_data()
     mt3 = MT3SCM()
     kappa, tau, speed, acceleration = mt3.compute_curvature(X)
     X_all_curve_params = np.array([kappa, tau, acceleration]).T
@@ -144,7 +142,7 @@ def publication_plot_metric_agglom_example(plot_name: str = "metric_lorenz_featu
 
 def plot_testing_results(X: np.ndarray, score: float, labels: np.ndarray, test_name: str, marker_size:float=10.0, fig_suptitle:str=None, subplot_title:str=None, loc:str="best", legend_title:str="Cluster", feature_names:list[str]=["x", "y", "z"], autorotate_labels: bool =True):
     x_label, y_label, z_label = feature_names
-    set_plot_params()
+    helpers.set_plot_params()
     fig = plt.figure(
         1, constrained_layout=True, figsize=(4, 4)
     )
