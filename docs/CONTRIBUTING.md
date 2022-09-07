@@ -1,4 +1,15 @@
+# Contributing
+
+Thank you for taking the time and interest to contribute to this project.
+You are welcome to
+- create a bug report
+- submit a pull request
+- suggest improvement or feature
+
+
 ## Development steps
+
+If you plan on contribute code here are some commands to help keep the code clean.
 
 ### Formatting
 
