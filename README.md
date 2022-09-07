@@ -1,5 +1,6 @@
 # Multivariate Time Series Sub-Sequence Clustering Metric
 
+[![DOI](https://zenodo.org/badge/470918479.svg)](https://zenodo.org/badge/latestdoi/470918479)
 ![](coverage.svg) [![Python 3.9](https://img.shields.io/badge/Python-3.9-blue)](https://www.python.org/downloads/release/python-390/)
 
 This repository provides a Python package for computing a multivariate time series subsequence clustering metric[^koehn].
