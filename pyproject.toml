@@ -28,6 +28,7 @@ flake8 = "^4.0.1"
 isort = "^5.10.1"
 docutils = "^0.18.1"
 tslearn = "^0.5.2"
+bumpver = "^2022.1118"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -45,3 +46,26 @@ profile = "black"
 import_heading_stdlib="Standard Libraries Import"
 import_heading_thirdparty="Third Party Libraries Import"
 import_heading_firstparty="Own Libraries Import"
+
+[tool.bumpver]
+current_version = "0.4.6"
+version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"
+commit_message = "bump version {old_version} -> {new_version}"
+commit = true
+tag = true
+push = true
+
+[tool.bumpver.file_patterns]
+"pyproject.toml" = [
+    'current_version = "{version}"',
+    'version = "{version}"',
+]
+"CITATION.cff" = [
+    "^version: {version}",
+]
+"mt3scm/__init__.py" = [
+    '__version__ = "{version}"'
+]
+"tests/test_mt3scm.py" = [
+    "assert __version__ == '{version}'"
+]

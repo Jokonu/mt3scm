@@ -62,3 +62,30 @@ Testing the package with pytest and generating code coverage information.
 
     # Generating html report
     $ pytest --cov=mt3scm --cov-report=html
+
+### Version bump and release
+
+using bumpver:
+
+    $ bumpver update --patch
+    # or
+    $ bumpver update --minor
+    # or
+    $ bumpver update --major
+    # for a testrun:
+    $ bumpver update --patch --dry -n
+
+and publish to testpypi:
+register repository first if not done yet
+```bash
+poetry config repositories.test-pypi https://test.pypi.org/legacy/
+```
+for publishing to testPyPi then use:
+```bash
+poetry publish --repository test-pypi --username __token__ --password test-pypi-token-here
+```
+
+test the installation with pip
+```bash
+python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mt3scm
+```
