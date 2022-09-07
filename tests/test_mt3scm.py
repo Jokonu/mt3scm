@@ -80,7 +80,7 @@ def gen_perfect_data():
 
 
 def test_version():
-    assert __version__ == '0.4.4'
+    assert __version__ == '0.4.6'
 
 
 def test_versions_are_in_sync():
