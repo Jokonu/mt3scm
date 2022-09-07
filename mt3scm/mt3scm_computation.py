@@ -98,7 +98,7 @@ class MT3SCM:
         eps: float = 1e-5,
         include_speed_acceleration: bool = False,
         include_acceleration: bool = True,
-        include_std_num_points: bool = True,
+        include_std_num_points: bool = False,
         weigh_metrics_on_n_points: bool = True,
         weigh_metrics_on_curve_std: bool = False,
         distance_fn: str = "manhatten",
@@ -370,12 +370,14 @@ class MT3SCM:
                 ),
                 columns=column_names,
             )
+            cols = [f"x{i}" for i in range(cluster_center_data[:, 4:].shape[1])]
             self.df_centers = pd.DataFrame(
-                cluster_center_data[:, 4:].T.astype("int"),
+                cluster_center_data[:, 4:],
                 index=pd.MultiIndex.from_arrays(
-                    cluster_center_data[:, 0:4].T, names=["c_id", "s_id", "std", "n_p"]
+                    cluster_center_data[:, 0:4].T.astype("int"),
+                    names=["c_id", "s_id", "std", "n_p"],
                 ),
-                columns=[f"x{i}" for i in range(cluster_center_data[:, 2:].shape[1])],
+                columns=cols,
             )
         elif self.include_std_num_points is True:
             self.df_curve = pd.DataFrame(

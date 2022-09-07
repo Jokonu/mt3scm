@@ -1,11 +1,11 @@
 [tool.poetry]
 name = "mt3scm"
-version = "0.4.3"
+version = "0.4.4"
 description = "Python package for 'Multivariate Time Series Sub-Sequence CLustering Metric'"
 authors = ["Jonas Köhne <jokohonas@gmail.com>"]
 maintainers = ["Jonas Köhne <jokohonas@gmail.com>"]
 license = "BSD-3-Clause"
-readme = "README.rst"
+readme = "README.md"
 repository = "https://github.com/Jokonu/mt3scm"
 
 [tool.poetry.dependencies]

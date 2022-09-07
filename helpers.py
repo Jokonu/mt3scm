@@ -14,6 +14,7 @@ import pandas as pd
 import seaborn as sns
 from matplotlib import cm
 from matplotlib.colors import Normalize
+from matplotlib.ticker import StrMethodFormatter
 from sklearn.metrics import (
     calinski_harabasz_score,
     davies_bouldin_score,
@@ -55,11 +56,37 @@ def set_plot_params():
         {
             "text.usetex": True,
             "font.family": "serif",
+            "font.size": 8,
             "font.sans-serif": ["Computer Modern Roman"],
             "axes.grid": False,
             "image.cmap": cm.get_cmap("viridis")
         }
     )
+
+def ax_scatter_3d_original(X, Y, Z, ax, kappa: np.ndarray, xyz_labels: list[str] = ["x", "y", "z"], subplot_title: str = None, marker_size: float = 0.8, marker_size_array=None, marker="o", plot_changepoints: bool = True, alpha=0.3, line_scaling_factor: float = 1.0, set_ticks_and_labels: bool = True, pad: float=0.2):
+    cmap = cm.get_cmap("viridis")
+    marker="."
+    data = kappa
+    data = (data - data.min()) / (np.std(data))
+    color = np.log((np.abs(data* 10) + 1) ** 2) * line_scaling_factor
+    scat = ax.scatter(X, Y, Z, c=color, cmap=cmap, s=color, marker=marker)
+    ax.set_title(subplot_title)
+    fig = plt.gcf()
+    clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=pad)
+    clb.set_ticks([color.min(),color.max() / 2, color.max()])
+    if set_ticks_and_labels is True:
+        ax.set_xlabel(f"{xyz_labels[0]} [-]")
+        ax.set_ylabel(f"{xyz_labels[1]} [-]")
+        ax.set_zlabel(f"{xyz_labels[2]} [-]")
+        ax.tick_params(labelsize=8)
+        clb.set_ticklabels(['Low', 'Medium', 'High'], rotation = 45)
+        clb.ax.tick_params(labelsize=8)
+    else:
+        ax.tick_params(labelbottom = False, labelleft=False)
+        # clb.set_ticklabels(['L', 'M', 'H'], rotation = 0)
+        clb.set_ticklabels(['', '', ''], rotation = 0)
+        clb.ax.tick_params(labelsize=8)
+        # clb.ax.tick_params(labelright=False)
 
 def ax_scatter_3d(
     X,
@@ -74,6 +101,9 @@ def ax_scatter_3d(
     plot_changepoints: bool = False,
     alpha=0.3,
     remove_ticks: bool = True,
+    fontsize: int=10,
+    set_ticks_and_labels: bool = True,
+    xyz_labels: list[str] = ["x", "y", "z"]
 ):
     if marker_size_array is not None:
         marker_size = marker_size_array
@@ -97,18 +127,23 @@ def ax_scatter_3d(
     scat = ax.scatter(X, Y, Z, c=labels, cmap=cmap, s=marker_size, marker=marker, norm=norm)
     fig = plt.gcf()
     clb = fig.colorbar(scat, ax=ax, shrink=0.5, pad=0.2)
-    clb.ax.set_title("Cluster ID", fontsize=10)
+    clb.ax.set_title("Cluster", fontsize=fontsize)
     if n_unique_labels < 11:
         tick_locs = np.arange(n_unique_labels) + 0.5
         clb.set_ticks(tick_locs)
         clb.set_ticklabels(np.arange(n_unique_labels))
-    ax.set_title(subplot_title, fontsize=10)
+    if set_ticks_and_labels is True:
+        ax.set_xlabel(f"{xyz_labels[0]}")
+        ax.set_ylabel(f"{xyz_labels[1]}")
+        ax.set_zlabel(f"{xyz_labels[2]}")
+        ax.tick_params(labelsize=8)
+    ax.set_title(subplot_title, fontsize=fontsize)
     # ax.legend(fontsize=8)
 
 
-def calc_unsupervised_metrics(X, label_array, edge_offset: int = 3):
-    mt3 = MT3SCM()
-    mt3scm_metric = mt3.mt3scm_score(X, label_array, edge_offset=edge_offset)
+def calc_unsupervised_metrics(X, label_array, edge_offset: int = 3, n_min_subs: int = 2, include_std_num_points: bool = True):
+    mt3 = MT3SCM(include_std_num_points=include_std_num_points)
+    mt3scm_metric = mt3.mt3scm_score(X, label_array, edge_offset=edge_offset, n_min_subs=n_min_subs)
     metrics_dict = {}
     metrics_dict["mt3scm"] = mt3scm_metric
     metrics_dict["wcc"] = mt3.wcc
@@ -232,7 +267,7 @@ def generate_thomas_attractor_data(dt: float = 1, num_steps: int = 2000, b: floa
     return pd.DataFrame(data, columns=["xs", "ys", "zs"])
 
 
-def generate_lorenz_attractor_data(dt: float = 0.005, num_steps: int = 3000):
+def generate_lorenz_attractor_data(dt: float = 0.005, num_steps: int = 3000, scale_zs: float = 1.0):
     def lorenz(x, y, z, s=10, r=28, b=2.667):
         x_dot = s * (y - x)
         y_dot = r * x - y - x * z
@@ -259,7 +294,7 @@ def generate_lorenz_attractor_data(dt: float = 0.005, num_steps: int = 3000):
         xs[i + 1] = xs[i] + (x_dot * dt)
         ys[i + 1] = ys[i] + (y_dot * dt)
         zs[i + 1] = zs[i] + (z_dot * dt)
-    data = np.array([xs, ys, zs]).T
+    data = np.array([xs, ys, zs*scale_zs]).T
     feature_names = ["xs", "ys", "zs"]
     x_label, y_label, z_label = feature_names
     time_index = np.arange(start=0, stop=num_steps * dt, step=dt)
@@ -494,7 +529,7 @@ def annotate_heatmap(
 
     # Get the formatter in case a string is supplied
     if isinstance(valfmt, str):
-        valfmt = matplotlib.ticker.StrMethodFormatter(valfmt)
+        valfmt = StrMethodFormatter(valfmt)
 
     # Loop over the data and create a `Text` for each "pixel".
     # Change the text's color depending on the data.
