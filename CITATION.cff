@@ -7,10 +7,6 @@ authors:
   given-names: "Jonas"
   orcid: "https://orcid.org/0000-0001-5536-9604"
 version: 0.4.7
-identifiers:
-  - description: This is the archived snapshot of version 0.4.7 of mt3scm
-    type: doi
-    value: "10.5281/zenodo.7057200"
-license: BSD 3-Clause License
+doi: 10.5281/zenodo.7057115
 date-released: 2022-09-07
 url: "https://github.com/Jokonu/mt3scm"

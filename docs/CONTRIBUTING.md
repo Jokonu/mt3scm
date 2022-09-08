@@ -87,5 +87,5 @@ poetry publish --repository test-pypi --username __token__ --password test-pypi-
 
 test the installation with pip
 ```bash
-python3 -m pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mt3scm
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mt3scm
 ```

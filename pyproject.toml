@@ -7,6 +7,14 @@ maintainers = ["Jonas Köhne <jokohonas@gmail.com>"]
 license = "BSD-3-Clause"
 readme = "README.md"
 repository = "https://github.com/Jokonu/mt3scm"
+keywords = ["time-series", "multivariate", "clustering", "metric", "subsequence", "curvature"]
+classifiers = [
+    "Environment :: Console",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Scientific/Engineering",
+    "Intended Audience :: Science/Research",
+]
 
 [tool.poetry.dependencies]
 python = ">=3.9"
