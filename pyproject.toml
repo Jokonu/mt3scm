@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "mt3scm"
-version = "0.4.7"
+version = "0.4.8"
 description = "Python package for 'Multivariate Time Series Sub-Sequence CLustering Metric'"
 authors = ["Jonas Köhne <jokohonas@gmail.com>"]
 maintainers = ["Jonas Köhne <jokohonas@gmail.com>"]
@@ -56,7 +56,7 @@ import_heading_thirdparty="Third Party Libraries Import"
 import_heading_firstparty="Own Libraries Import"
 
 [tool.bumpver]
-current_version = "0.4.7"
+current_version = "0.4.8"
 version_pattern = "MAJOR.MINOR.PATCH[PYTAGNUM]"
 commit_message = "bump version {old_version} -> {new_version}"
 commit = true
