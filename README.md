@@ -36,6 +36,12 @@ For further details on the computation see the pubplication [^koehn]
 
 # Usage
 
+Package can be installed via pip with 
+
+```bash
+$ pip install mt3scm
+```
+
 There are two ways to compute the metric score
 ```python
 import numpy as np
